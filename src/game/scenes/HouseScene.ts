@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { type GameClock, type DayPhase } from '@domain/clock/GameClock.ts';
 import { type LifeStore } from '@domain/state/LifeStore.ts';
+import { getActiveHouse } from '@domain/state/lifeOps.ts';
 import { type HouseModel, roomAtTile, spawnTile } from '@domain/house/model.ts';
 import { buildGrid, mergeWalls, FLOOR } from '@game/world/buildGrid.ts';
 import { createTileTextures, floorKey } from '@game/world/textures.ts';
@@ -35,7 +36,7 @@ export class HouseScene extends Phaser.Scene {
 
   private hudText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
-  private house!: HouseModel;
+  private house: HouseModel = { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [] };
 
   private readonly tile = 32;
 
@@ -47,7 +48,7 @@ export class HouseScene extends Phaser.Scene {
 
   create(): void {
     createTileTextures(this);
-    this.house = this.store.getState().house;
+    this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [] };
 
     const ts = this.tile;
     const worldW = this.house.larguraTiles * ts;

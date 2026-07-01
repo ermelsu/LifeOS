@@ -1,43 +1,71 @@
 import { type HouseModel } from '@domain/house/model.ts';
+import { type Character } from '@domain/character/model.ts';
 import { templateHouse } from '@domain/house/template.ts';
 
 /**
  * LifeState — a raiz do MODELO DE DOMÍNIO (a fonte da verdade sobre a vida do usuário).
  *
- * O estado da vida vive num domínio independente do Phaser, testável isolado e persistido no
- * IndexedDB. Phaser e os painéis HTML apenas LEEM daqui e reagem.
- *
- * A partir da v2, o estado carrega a PLANTA DA CASA (`house`) que o Emerson constrói no
- * construtor — ela deixou de ser fixa no código.
+ * v3: o save tem UM personagem (`character`) e VÁRIAS casas (`houses`), com uma casa ativa
+ * (`activeHouseId`) — conforme o fluxo do jogo (docs/fluxo-do-jogo.md).
  */
 
-/** Versão do formato do estado — permite migrações da persistência. */
-export const LIFE_STATE_VERSION = 2;
+export const LIFE_STATE_VERSION = 3;
 
 export interface LifeState {
   version: number;
   createdAt: string;
   updatedAt: string;
-  /** A casa construída pelo usuário (Módulo: construtor de casa). */
-  house: HouseModel;
+  /** Único personagem do save; null até ser criado na tela de personagem. */
+  character: Character | null;
+  /** Casas do personagem (pode haver mais de uma). */
+  houses: HouseModel[];
+  /** Casa atualmente aberta. */
+  activeHouseId: string | null;
 }
 
-/** Cria um estado inicial já com a casa de exemplo (o usuário pode editar ou limpar). */
+/** Estado inicial de um save novo (sem personagem e sem casas — o fluxo os cria). */
 export function createInitialLifeState(now: Date = new Date()): LifeState {
   const iso = now.toISOString();
   return {
     version: LIFE_STATE_VERSION,
     createdAt: iso,
     updatedAt: iso,
-    house: templateHouse(),
+    character: null,
+    houses: [],
+    activeHouseId: null,
   };
 }
 
+interface LegacyV2 {
+  house?: HouseModel;
+}
+
 /**
- * Normaliza um estado carregado do disco: preenche campos ausentes de versões antigas
- * (migração leve). Estados v1 não tinham `house` — recebem a casa de exemplo.
+ * Normaliza/migra um estado carregado do disco. Estados antigos:
+ *  - v1: sem casa alguma;
+ *  - v2: uma única `house` → vira `houses:[house]` com essa casa ativa.
  */
 export function normalizeLifeState(state: LifeState): LifeState {
-  const house = state.house && Array.isArray(state.house.rooms) ? state.house : templateHouse();
-  return { ...state, version: LIFE_STATE_VERSION, house };
+  const houses = Array.isArray(state.houses) ? state.houses : [];
+  const legacyHouse = (state as LifeState & LegacyV2).house;
+  if (houses.length === 0 && legacyHouse) {
+    const migrated: HouseModel = legacyHouse.id ? legacyHouse : { ...templateHouse(), rooms: legacyHouse.rooms ?? [] };
+    return {
+      ...state,
+      version: LIFE_STATE_VERSION,
+      character: state.character ?? null,
+      houses: [migrated],
+      activeHouseId: migrated.id,
+    };
+  }
+  const activeHouseId = houses.some((h) => h.id === state.activeHouseId)
+    ? state.activeHouseId
+    : (houses[0]?.id ?? null);
+  return {
+    ...state,
+    version: LIFE_STATE_VERSION,
+    character: state.character ?? null,
+    houses,
+    activeHouseId,
+  };
 }

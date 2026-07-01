@@ -1,4 +1,5 @@
 import { type LifeStore } from '@domain/state/LifeStore.ts';
+import { getActiveHouse, replaceActiveHouse } from '@domain/state/lifeOps.ts';
 import { type Tile, type TileRect, type LifeArea, type FloorType } from '@domain/house/types.ts';
 import {
   type HouseModel,
@@ -9,9 +10,7 @@ import {
   updateRoom,
   removeRoom,
   roomAtTile,
-  createEmptyHouse,
 } from '@domain/house/model.ts';
-import { templateHouse } from '@domain/house/template.ts';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -69,12 +68,12 @@ export class HouseBuilder {
     this.el.style.display = visible ? 'flex' : 'none';
   }
 
-  private house(): HouseModel {
-    return this.store.getState().house;
+  private house(): HouseModel | null {
+    return getActiveHouse(this.store.getState());
   }
 
   private setHouse(next: HouseModel): void {
-    this.store.update((s) => ({ ...s, house: next }));
+    this.store.update((s) => replaceActiveHouse(s, next));
   }
 
   // --- Interação com ponteiro ---
@@ -88,6 +87,7 @@ export class HouseBuilder {
   private tileFromEvent(e: PointerEvent): Tile {
     const rect = this.svg.getBoundingClientRect();
     const house = this.house();
+    if (!house) return { x: 0, y: 0 };
     const x = Math.floor((e.clientX - rect.left) / this.px);
     const y = Math.floor((e.clientY - rect.top) / this.px);
     return {
@@ -97,8 +97,10 @@ export class HouseBuilder {
   }
 
   private onPointerDown(e: PointerEvent): void {
+    const house = this.house();
+    if (!house) return;
     const tile = this.tileFromEvent(e);
-    const hit = roomAtTile(this.house(), tile.x, tile.y);
+    const hit = roomAtTile(house, tile.x, tile.y);
     this.svg.setPointerCapture(e.pointerId);
 
     if (hit) {
@@ -118,8 +120,8 @@ export class HouseBuilder {
 
     if (this.drag.mode === 'move' && this.drag.roomId && this.drag.offset) {
       const house = this.house();
-      const room = house.rooms.find((r) => r.id === this.drag?.roomId);
-      if (!room) return;
+      const room = house?.rooms.find((r) => r.id === this.drag?.roomId);
+      if (!house || !room) return;
       const nx = Math.max(0, Math.min(house.larguraTiles - room.rect.w, tile.x - this.drag.offset.x));
       const ny = Math.max(0, Math.min(house.alturaTiles - room.rect.h, tile.y - this.drag.offset.y));
       if (nx !== room.rect.x || ny !== room.rect.y) {
@@ -135,11 +137,11 @@ export class HouseBuilder {
     this.svg.releasePointerCapture(e.pointerId);
 
     if (this.drag.mode === 'draw') {
+      const before = this.house();
       const rect = this.rectFromTiles(this.drag.startTile, this.drag.curTile);
-      if (rect.w >= 1 && rect.h >= 1) {
-        const before = this.house();
+      if (before && rect.w >= 1 && rect.h >= 1) {
         this.setHouse(addRoom(before, rect));
-        const created = this.store.getState().house.rooms.at(-1);
+        const created = this.house()?.rooms.at(-1);
         this.selectedId = created ? created.id : null;
       }
     }
@@ -157,6 +159,11 @@ export class HouseBuilder {
 
   private render(): void {
     const house = this.house();
+    if (!house) {
+      this.svg.innerHTML = '';
+      this.panel.innerHTML = '<h2>🔨 Construir casa</h2><p class="dim">Nenhuma casa ativa.</p>';
+      return;
+    }
     const w = house.larguraTiles * this.px;
     const h = house.alturaTiles * this.px;
     this.svg.setAttribute('width', String(w));
@@ -192,6 +199,7 @@ export class HouseBuilder {
 
   private renderPanel(): void {
     const house = this.house();
+    if (!house) return;
     const selected = house.rooms.find((r) => r.id === this.selectedId) ?? null;
 
     const areaOptions = LIFE_AREAS.map(
@@ -216,49 +224,45 @@ export class HouseBuilder {
           : `<p class="dim">Nenhum cômodo selecionado.</p>`
       }
       <hr />
-      <div class="dim">${house.rooms.length} cômodo(s)</div>
-      <button id="b-exemplo">Restaurar exemplo</button>
-      <button id="b-limpar" class="danger">Limpar tudo</button>
+      <div class="dim">🏠 ${escapeHtml(house.nome)} · ${house.rooms.length} cômodo(s)</div>
+      <button id="b-limpar" class="danger">Limpar cômodos</button>
     `;
 
-    this.bindPanel(selected?.id ?? null);
+    this.bindPanel(house, selected?.id ?? null);
   }
 
-  private bindPanel(selectedId: string | null): void {
+  private bindPanel(house: HouseModel, selectedId: string | null): void {
+    const withHouse = (fn: (h: HouseModel) => HouseModel): void => {
+      const h = this.house();
+      if (h) this.setHouse(fn(h));
+    };
+
     const nome = this.panel.querySelector<HTMLInputElement>('#b-nome');
     nome?.addEventListener('input', () => {
-      if (selectedId) this.setHouse(updateRoom(this.house(), selectedId, { nome: nome.value }));
+      if (selectedId) withHouse((h) => updateRoom(h, selectedId, { nome: nome.value }));
     });
 
     const area = this.panel.querySelector<HTMLSelectElement>('#b-area');
     area?.addEventListener('change', () => {
-      if (selectedId) this.setHouse(updateRoom(this.house(), selectedId, { lifeArea: area.value as LifeArea }));
+      if (selectedId) withHouse((h) => updateRoom(h, selectedId, { lifeArea: area.value as LifeArea }));
     });
 
     const floor = this.panel.querySelector<HTMLSelectElement>('#b-floor');
     floor?.addEventListener('change', () => {
-      if (selectedId) this.setHouse(updateRoom(this.house(), selectedId, { floorType: floor.value as FloorType }));
+      if (selectedId) withHouse((h) => updateRoom(h, selectedId, { floorType: floor.value as FloorType }));
     });
 
     this.panel.querySelector('#b-del')?.addEventListener('click', () => {
       if (!selectedId) return;
-      this.setHouse(removeRoom(this.house(), selectedId));
+      withHouse((h) => removeRoom(h, selectedId));
       this.selectedId = null;
       this.render();
     });
 
-    this.panel.querySelector('#b-exemplo')?.addEventListener('click', () => {
-      if (confirm('Substituir a casa atual pela de exemplo?')) {
-        this.selectedId = null;
-        this.setHouse(templateHouse());
-      }
-    });
-
     this.panel.querySelector('#b-limpar')?.addEventListener('click', () => {
-      if (confirm('Apagar todos os cômodos?')) {
+      if (confirm(`Apagar todos os cômodos de "${house.nome}"?`)) {
         this.selectedId = null;
-        const h = this.house();
-        this.setHouse(createEmptyHouse(h.larguraTiles, h.alturaTiles));
+        withHouse((h) => ({ ...h, rooms: [] }));
       }
     });
   }

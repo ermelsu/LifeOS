@@ -20,6 +20,8 @@ export interface BuiltRoom {
 }
 
 export interface HouseModel {
+  id: string;
+  nome: string;
   larguraTiles: number;
   alturaTiles: number;
   rooms: BuiltRoom[];
@@ -58,8 +60,8 @@ export const FLOOR_HEX: Record<FloorType, string> = {
   deck: '#6f7f86',
 };
 
-export function createEmptyHouse(larguraTiles = 48, alturaTiles = 34): HouseModel {
-  return { larguraTiles, alturaTiles, rooms: [] };
+export function createEmptyHouse(nome = 'Nova casa', larguraTiles = 48, alturaTiles = 34): HouseModel {
+  return { id: crypto.randomUUID(), nome, larguraTiles, alturaTiles, rooms: [] };
 }
 
 export interface NewRoomOptions {

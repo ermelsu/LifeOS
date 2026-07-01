@@ -1,22 +1,30 @@
 export type AppMode = 'build' | 'play';
 
+export interface ModeBarHandlers {
+  onBuild: () => void;
+  onPlay: () => void;
+  onHouses: () => void;
+}
+
 /**
- * Barra superior para alternar entre os modos Construir (desenhar a casa) e Jogar (caminhar
- * pela casa construída). É um overlay HTML — a "casa é a interface", menus são discretos.
+ * Barra superior mostrada dentro de uma casa: alterna Construir/Jogar e volta para a lista de
+ * casas. Overlay HTML discreto ("a casa é a interface").
  */
 export class ModeBar {
+  private readonly el: HTMLDivElement;
   private readonly buildBtn: HTMLButtonElement;
   private readonly playBtn: HTMLButtonElement;
 
-  constructor(parent: HTMLElement, onMode: (mode: AppMode) => void) {
-    const bar = document.createElement('div');
-    bar.className = 'mode-bar panel';
+  constructor(parent: HTMLElement, handlers: ModeBarHandlers) {
+    this.el = document.createElement('div');
+    this.el.className = 'mode-bar panel';
 
-    this.buildBtn = this.makeButton('🔨 Construir', () => onMode('build'));
-    this.playBtn = this.makeButton('🎮 Jogar', () => onMode('play'));
+    this.buildBtn = this.makeButton('🔨 Construir', handlers.onBuild);
+    this.playBtn = this.makeButton('🎮 Jogar', handlers.onPlay);
+    const housesBtn = this.makeButton('🏠 Casas', handlers.onHouses);
 
-    bar.append(this.buildBtn, this.playBtn);
-    parent.appendChild(bar);
+    this.el.append(this.buildBtn, this.playBtn, housesBtn);
+    parent.appendChild(this.el);
   }
 
   private makeButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -25,6 +33,10 @@ export class ModeBar {
     btn.className = 'mode-btn';
     btn.addEventListener('click', onClick);
     return btn;
+  }
+
+  setVisible(visible: boolean): void {
+    this.el.style.display = visible ? 'flex' : 'none';
   }
 
   setActive(mode: AppMode): void {
