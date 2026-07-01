@@ -15,12 +15,14 @@ _TODO: commitar a imagem original em `docs/referencias/planta-casa.png` para arq
 |---|---|
 | **Sala** | Direita, área verde ampla. **É o hub central e o ponto de entrada da casa** ("eu entro pela sala"). Todos os caminhos passam por ela. |
 | **Corredor** | Faixa no topo. Passagem que liga a Sala ao Quarto e ao Escritório (não é o hub — só o corredor de acesso à ala esquerda). |
-| **Quarto** | Canto superior esquerdo. |
-| **Escritório** | Ao lado do Quarto, à esquerda, acessado pelo Corredor. |
-| **Quarto "bagunças/mudança"** | Cômodo destacado entre o Corredor e a Sala. Hoje usado como depósito temporário de mudança. _A confirmar: vira "Depósito"? Fica no mapa?_ |
+| **Quarto** | Canto superior esquerdo. **Suíte**: o **Banheiro** fica dentro do quarto (não é cômodo separado no mapa). |
+| **Escritório** | Ao lado do Quarto, à esquerda, acessado pelo Corredor. **Objetos reais:** guarda-roupa (precisa ser ajeitado), mesinha e poltrona. _(Além do computador da seção 8.)_ |
+| **Quarto "bagunças/mudança"** | **Fica FORA do plano por enquanto** (não vira cômodo caminhável). Aparece no mapa apenas com **uma única ação: "Ajeitar quarto da bagunça da mudança"** — nada mais. |
 | **Cozinha** | Centro-direita, abaixo da Sala. Dá acesso às áreas externas. |
 | **Área externa — Cachorros da grade** | Duas manchas: uma **grande** (inferior esquerda) e uma **menor** (centro-inferior). É "a grade" mencionada na seção 9.5. |
-| **Cachorros do jardim** | Área à direita, separada da grade. Segundo grupo de cães. |
+| **Jardim (Cachorros do jardim)** | Área à direita, separada da grade. **Dividido em 2 partes:** (1) cães maiores; (2) chihuahuas. A **Lavanderia / Área de serviço** fica no **deck do jardim**. |
+| **Banheiro** | **Dentro do Quarto (suíte)** — não é cômodo à parte. |
+| **Lavanderia / Área de serviço** | No **deck do jardim** (área externa). |
 | **Limite virtual** | Marcação do robô (barreira), canto inferior direito — não é um cômodo. |
 
 ## Adjacências reais (grafo de circulação)
@@ -32,29 +34,48 @@ passagem para a ala esquerda (Quarto/Escritório):
 ```
 Sala  (entrada + hub central)
  ├── Corredor
- │    ├── Quarto
- │    ├── Escritório
- │    └── Quarto (bagunças/mudança)   [status a confirmar]
+ │    ├── Quarto  (suíte → Banheiro dentro)
+ │    └── Escritório
  └── Cozinha
       ├── Área externa — Cachorros da grade (grande + menor)
-      └── Cachorros do jardim
+      └── Jardim
+           ├── parte 1 — cães maiores
+           ├── parte 2 — chihuahuas
+           └── deck → Lavanderia / Área de serviço
+
+Fora do mapa caminhável:
+ └── Quarto da bagunça da mudança  → só a ação "Ajeitar quarto da bagunça da mudança"
 ```
+
+### Expansão futura do mapa
+- Poder **adicionar cômodos a partir de uma parede** (abrir uma parede → novo cômodo).
+- Um **editor de mapa** dentro do próprio app, para o Emerson ajustar o layout depois.
+- _(Ambos são módulos posteriores; anotados aqui para não se perderem.)_
 
 ## Áreas dos cachorros (seção 9.5)
 
-A planta mostra **dois territórios distintos** de cães:
+A casa tem **três territórios** de cães + cães dentro de casa. Roster completo e correção da
+Tisha em [`cachorros.md`](cachorros.md). Resumo dos territórios:
 
-1. **Cachorros da grade** — "a grade", em duas subáreas (uma grande, uma menor).
-2. **Cachorros do jardim** — grupo separado, à direita.
+1. **Grade** (área externa, duas subáreas: grande + menor) — 5 cães.
+2. **Jardim — parte 1** (cães maiores) — 9 cães.
+3. **Jardim — parte 2** (chihuahuas) — 5 cães.
+4. **Dentro de casa** (com o Emerson, em cuidado) — a **Sansa**.
 
-Isso impacta a modelagem de `Dog`/`Room`: cada cão pertence a **um território** (grade _ou_ jardim). Um dos cães da grade é a **Tisha**.
+> **Correção:** o documento-mestre original supunha a **Tisha na grade**. Na verdade a Tisha é
+> **chihuahua do jardim (parte 2)**. Ver `cachorros.md`.
 
 ## Perguntas em aberto para o Emerson
 
 _(Não improvisar — seção 12: "Pergunte quando faltar informação real".)_
 
-1. O **Corredor** deve ser um cômodo caminhável no mapa (passagem larga) ou apenas o meio de ligação entre portas? (A Sala já está confirmada como hub/entrada.)
-2. O **"Quarto bagunças/mudança"** entra no mapa como cômodo (ex.: futuro **Depósito** da seção 8) ou é temporário e fica de fora por enquanto?
-3. Confirmar a divisão dos cães: **quais/quantos** ficam na **grade** e **quais/quantos** no **jardim**? (Nomes reais — a Tisha é da grade?)
-4. As áreas de **Banheiro** e **Lavanderia / Área de serviço** (previstas na seção 8) não aparecem rotuladas nesta captura — onde ficam em relação a este layout?
-5. Há **quintal/jardim** caminhável além das áreas dos cães, ou o jardim _é_ a área dos cães do jardim?
+Resolvidas nesta rodada:
+- ✅ **Quarto da bagunça da mudança** → fora do mapa; só a ação "Ajeitar quarto da bagunça da mudança".
+- ✅ **Banheiro** → suíte, dentro do Quarto.
+- ✅ **Lavanderia** → no deck do jardim.
+- ✅ **Divisão dos cães** → ver `cachorros.md` (Tisha é do jardim, não da grade).
+
+Ainda em aberto:
+1. O **Corredor** é caminhável (passagem larga) ou só ligação entre portas?
+2. A **grade** e o **jardim** são áreas caminháveis (o personagem entra) ou só painéis de cuidado dos cães vistos de fora?
+3. Nomes/estado dos objetos ainda não detalhados (Cozinha, Sala, Quarto) — virão por cômodo quando cada um entrar no mapa.

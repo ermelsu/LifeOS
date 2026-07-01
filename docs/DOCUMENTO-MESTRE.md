@@ -251,7 +251,7 @@ Ações são sempre físicas e coerentes. Nada deve parecer um menu de administr
 - **Painel de status por cão:** ❤️ saúde · 🍖 alimentação · 💧 água · 💩 fezes (precisa recolher?) · 🚿 banho (há quantos dias) · 💊 medicamentos · 😊 humor.
 - **Ações ao clicar no cão:** alimentar · trocar água · dar banho · brincar · passear · aplicar medicamento · registrar observação.
 - Gera **histórico de cuidados** (`DogCareLog`) e evita esquecer necessidades.
-- **Escalável:** deve ser fácil ver e escalar para vários cães. (A quantidade e os nomes reais virão das imagens de referência — um dos cães mencionados é a **Tisha**.)
+- **Escalável:** deve ser fácil ver e escalar para vários cães. **São 20 cães reais** em três territórios (grade, jardim parte 1/maiores, jardim parte 2/chihuahuas) + a **Sansa** dentro de casa em cuidado. A **Tisha** é chihuahua do jardim. Roster completo em [`docs/referencias/cachorros.md`](referencias/cachorros.md).
 - Fezes não recolhidas **aparecem**; depois de recolher, **somem** (Regra Nº 1).
 
 ### 9.6 Streak (sequência) e metas diárias
@@ -404,7 +404,7 @@ Cada módulo termina com algo que **roda no navegador** e pode ser aberto. Ordem
 Estes itens são **entradas do projeto** e devem ser solicitados antes de finalizar as partes correspondentes:
 
 - **Imagens de referência da casa** (fotos e/ou planta) para reproduzir o layout e a disposição real dos cômodos e objetos. _(Recebida uma planta do robô aspirador em 2026-07-01 — ver `docs/referencias/planta-casa.md`.)_
-- **Imagem de referência da área dos cachorros ("a grade")** e a **lista real dos cães** (nomes, quantidade). Um deles é a **Tisha**.
+- **Imagem de referência da área dos cachorros ("a grade")** e a **lista real dos cães** — ✅ recebida (2026-07-01): 20 cães, roster completo em `docs/referencias/cachorros.md`. A **Tisha** é chihuahua do jardim (não da grade).
 - **Adjacências reais** entre cômodos (a estrutura da seção 8 é um placeholder).
 - **Estoque inicial real** (o que já existe em geladeira, freezer, despensa, banheiro, área de limpeza) para semear o inventário.
 - **Categorias financeiras e renda** que o Emerson quer acompanhar.
