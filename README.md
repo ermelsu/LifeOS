@@ -36,9 +36,10 @@ testável isolado e persistido no IndexedDB. Phaser e os painéis HTML apenas **
 src/
 ├── domain/   # entidades e regras da vida — SEM dependência de Phaser (fonte da verdade)
 │   ├── clock/    GameClock — relógio do mundo sincronizado ao real
+│   ├── house/    planta da casa (cômodos, portas, atividades) como dados puros
 │   └── state/    LifeState + LifeStore (estado + notificação de mudanças)
 ├── data/     # persistência IndexedDB (Dexie): db + LifeStateRepository
-├── game/     # cenas, sprites, animações Phaser (leem do domínio)
+├── game/     # Phaser (leem do domínio): HouseScene, Player, world/buildGrid
 ├── ui/       # painéis HTML/CSS por cima do canvas
 ├── app/      # composição: main.ts, SaveLoop (salvamento automático)
 └── test/     # setup dos testes (fake-indexeddb)
@@ -72,12 +73,30 @@ Conforme o plano modular (seção 11 do documento-mestre):
 
 **Pronto quando:** o projeto compila, roda localmente e publica uma página no GitHub Pages. ✔️
 
+## Módulo 1 (esqueleto do mundo caminhável) 🚧
+
+Esqueleto jogável da **casa inteira**, com placeholders (retângulos), para testar o conceito:
+
+- [x] Planta da casa no domínio (`domain/house/`), fiel às adjacências reais — a **Sala é a entrada/hub**.
+- [x] Personagem que **caminha** (WASD / setas) com colisão em paredes (física Arcade) e câmera que segue.
+- [x] **Portas** entre cômodos que o personagem **abre** (aproxime-se + `E`/Espaço).
+- [x] **Atividades pendentes** dentro de cada cômodo (marcadores `!`; `E` mostra a lista).
+- [x] **Iluminação em tempo real** pela hora do dia (overlay que muda de amanhecer a noite).
+- [x] Testes da planta + geração da grade de colisão; smoke test no navegador (Chromium).
+
+Cômodos no mapa: Sala, Corredor, Quarto (com Banheiro suíte), Escritório, Cozinha, e as áreas
+dos cães (Grade e Jardim, com o deck/lavanderia). O "quarto da bagunça da mudança" fica fora do
+mapa — só a ação de ajeitá-lo, exposta no Corredor.
+
+**Falta para fechar o Módulo 1:** substituir placeholders por tilemap/arte e sprite animado do
+personagem; refinar a curva de iluminação. **A confirmar com o Emerson:** se o Corredor e as áreas
+dos cães são caminháveis ou só painéis.
+
 ### Próximos módulos
 
-1. **Módulo 1** — o mundo caminhável (Cozinha em tilemap, personagem, movimento, iluminação em tempo real).
-2. **Módulo 2** — objetos e estados (flagship: a Pia com 4 estados).
-3. **Módulo 3** — rotina e tarefas ("missões").
-4. … (streak, estoque, finanças, cachorros, gamificação, assistente — ver documento-mestre).
+1. **Módulo 2** — objetos e estados (flagship: a Pia com 4 estados), persistindo no IndexedDB.
+2. **Módulo 3** — rotina e tarefas ("missões") reais no lugar dos marcadores placeholder.
+3. … (streak, estoque, finanças, cachorros, gamificação, assistente — ver documento-mestre).
 
 ## Referências reais (entradas do projeto)
 

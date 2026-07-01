@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { type GameClock } from '@domain/clock/GameClock.ts';
-import { BootScene } from './scenes/BootScene.ts';
+import { HouseScene } from './scenes/HouseScene.ts';
 
 /**
  * Cria a instância do Phaser e a monta dentro de `parent`. Recebe o GameClock do domínio
@@ -14,10 +14,14 @@ export function createGame(parent: HTMLElement, clock: GameClock): Phaser.Game {
     height: 540,
     pixelArt: true, // 2D pixel art, sem suavização (seção 5).
     backgroundColor: '#0d1220',
+    physics: {
+      default: 'arcade',
+      arcade: { debug: false },
+    },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [new BootScene(clock)],
+    scene: [new HouseScene(clock)],
   });
 }
