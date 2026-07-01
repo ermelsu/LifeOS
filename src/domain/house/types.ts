@@ -1,6 +1,6 @@
 /**
- * Tipos da planta da casa — MODELO DE DOMÍNIO (seção 6). Dados puros em coordenadas de TILE,
- * sem dependência de Phaser. A conversão para pixels acontece na apresentação.
+ * Tipos base da planta — MODELO DE DOMÍNIO (seção 6). Dados puros em coordenadas de TILE, sem
+ * dependência de Phaser. As entidades editáveis (BuiltRoom, HouseModel) ficam em `model.ts`.
  */
 
 /** Áreas da vida representadas pelos cômodos (seção 8). */
@@ -28,50 +28,6 @@ export interface TileRect {
   y: number;
   w: number;
   h: number;
-}
-
-/** Marcador de atividades pendentes dentro de um cômodo (placeholder até o Módulo 3). */
-export interface RoomActivity {
-  tile: Tile;
-  labels: string[];
-}
-
-/** Sub-região visual dentro de um cômodo (ex.: o Banheiro suíte dentro do Quarto). */
-export interface RoomSubarea {
-  nome: string;
-  rect: TileRect;
-  floorType: FloorType;
-}
-
-export interface Room {
-  id: string;
-  nome: string;
-  lifeArea: LifeArea;
-  /** Área de piso caminhável (interior do cômodo), em tiles. */
-  floor: TileRect;
-  floorType: FloorType;
-  subareas?: RoomSubarea[];
-  activity?: RoomActivity;
-}
-
-export type DoorOrientation = 'h' | 'v';
-
-/** Porta: um vão de 1 tile na parede entre dois cômodos, que o personagem abre. */
-export interface Door {
-  id: string;
-  entre: [string, string];
-  tile: Tile;
-  orientacao: DoorOrientation;
-}
-
-export interface HouseLayout {
-  larguraTiles: number;
-  alturaTiles: number;
-  tileSize: number;
-  /** Onde o personagem nasce (a Sala é a entrada da casa). */
-  spawn: Tile;
-  rooms: Room[];
-  doors: Door[];
 }
 
 /** True se o tile (x,y) está dentro do retângulo. */

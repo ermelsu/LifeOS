@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { type GameClock } from '@domain/clock/GameClock.ts';
+import { type LifeStore } from '@domain/state/LifeStore.ts';
 import { HouseScene } from './scenes/HouseScene.ts';
 
 /**
- * Cria a instância do Phaser e a monta dentro de `parent`. Recebe o GameClock do domínio
- * por injeção — a apresentação lê do domínio, nunca o contrário (seção 6).
+ * Cria a instância do Phaser e a monta dentro de `parent`. Recebe o GameClock e o LifeStore do
+ * domínio por injeção — a apresentação lê do domínio, nunca o contrário (seção 6).
  */
-export function createGame(parent: HTMLElement, clock: GameClock): Phaser.Game {
+export function createGame(parent: HTMLElement, clock: GameClock, store: LifeStore): Phaser.Game {
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -22,6 +23,6 @@ export function createGame(parent: HTMLElement, clock: GameClock): Phaser.Game {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [new HouseScene(clock)],
+    scene: [new HouseScene(clock, store)],
   });
 }

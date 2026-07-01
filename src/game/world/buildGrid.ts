@@ -1,32 +1,28 @@
-import { type HouseLayout, type TileRect } from '@domain/house/types.ts';
+import { type TileRect } from '@domain/house/types.ts';
+import { type HouseModel } from '@domain/house/model.ts';
 
 export const WALL = 0;
 export const FLOOR = 1;
 
 /**
- * Converte a planta (cômodos + portas) numa grade de colisão: tudo começa como PAREDE,
- * o piso de cada cômodo vira CHÃO, e o tile de cada porta é aberto para CHÃO (a barreira
- * da porta fechada é um corpo físico separado, controlado pela cena).
+ * Converte a casa construída numa grade de colisão: tudo começa como PAREDE e o piso de cada
+ * cômodo vira CHÃO. Como não há portas, cômodos encostados ficam conectados (chão contíguo);
+ * paredes visíveis são os tiles de parede que encostam em chão (ver HouseScene).
  */
-export function buildGrid(layout: HouseLayout): number[][] {
-  const grid: number[][] = Array.from({ length: layout.alturaTiles }, () =>
-    new Array<number>(layout.larguraTiles).fill(WALL),
+export function buildGrid(house: HouseModel): number[][] {
+  const grid: number[][] = Array.from({ length: house.alturaTiles }, () =>
+    new Array<number>(house.larguraTiles).fill(WALL),
   );
 
-  const carve = (rect: TileRect): void => {
-    for (let y = rect.y; y < rect.y + rect.h; y++) {
+  for (const room of house.rooms) {
+    const r = room.rect;
+    for (let y = r.y; y < r.y + r.h; y++) {
       const row = grid[y];
       if (!row) continue;
-      for (let x = rect.x; x < rect.x + rect.w; x++) {
-        if (x >= 0 && x < layout.larguraTiles) row[x] = FLOOR;
+      for (let x = r.x; x < r.x + r.w; x++) {
+        if (x >= 0 && x < house.larguraTiles) row[x] = FLOOR;
       }
     }
-  };
-
-  for (const room of layout.rooms) carve(room.floor);
-  for (const door of layout.doors) {
-    const row = grid[door.tile.y];
-    if (row && door.tile.x >= 0 && door.tile.x < layout.larguraTiles) row[door.tile.x] = FLOOR;
   }
 
   return grid;

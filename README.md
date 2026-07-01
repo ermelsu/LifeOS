@@ -91,17 +91,29 @@ Cômodos no mapa: Sala, Corredor, Quarto (com Banheiro suíte), Escritório, Coz
 dos cães (Grade e Jardim, com o deck/lavanderia). O "quarto da bagunça da mudança" fica fora do
 mapa — só a ação de ajeitá-lo, exposta no Corredor.
 
-**Próximo passo combinado:** transformar isto num **construtor de casa** — o Emerson desenha os
-próprios cômodos (parede, porta, tipo de piso) e a planta é salva no IndexedDB, no lugar da planta
-fixa de placeholder. Depois: móveis/objetos (que viram tarefas), sprite animado do personagem e
-arte pixel definitiva. **A confirmar:** se o Corredor e as áreas dos cães são caminháveis ou só painéis.
+## Construtor de casa ✅
 
-### Próximos módulos
+A planta deixou de ser fixa: agora o Emerson **constrói a própria casa** e ela é salva no IndexedDB.
 
-1. **Construtor de casa** — planta editável e persistida (substitui a planta fixa).
-2. **Módulo 2** — objetos e estados (flagship: a Pia com 4 estados), persistindo no IndexedDB.
-3. **Módulo 3** — rotina e tarefas ("missões") reais no lugar dos marcadores placeholder.
-4. … (streak, estoque, finanças, cachorros, gamificação, assistente — ver documento-mestre).
+- [x] Modelo editável (`domain/house/model.ts`): `HouseModel` + cômodos, dentro do `LifeState` (v2 com migração).
+- [x] Dois modos, alternados por uma barra: **🔨 Construir** e **🎮 Jogar**.
+- [x] Editor (`ui/builder/HouseBuilder.ts`): arrastar cria cômodo; clicar seleciona; arrastar move;
+      painel edita nome / área da vida / tipo de piso; excluir; "Restaurar exemplo" / "Limpar tudo".
+- [x] O modo Jogar relê a casa construída (a `HouseScene` reinicia lendo o `LifeStore`).
+- [x] Casa de exemplo (`template.ts`) fiel às adjacências reais; Corredor e áreas dos cães caminháveis.
+- [x] Testes do modelo + grade; smoke test no navegador (desenhar cômodo → jogar).
+
+### Fluxo do jogo (a construir — spec do Emerson)
+
+Abrir → intro → **Novo jogo** → **editar personagem** (1 personagem só) → **criar a 1ª casa**
+(pode ter mais de uma) → **Jogar**. Ver [`docs/fluxo-do-jogo.md`](docs/fluxo-do-jogo.md).
+
+### Próximos passos
+
+1. **Fluxo/onboarding**: menu inicial, criação de personagem, e suporte a **várias casas / 1 personagem**.
+2. Móveis/objetos no construtor (viram tarefas — Regra Nº 1) e sprite animado do personagem.
+3. **Módulo 2** — objetos e estados (flagship: a Pia com 4 estados).
+4. **Módulo 3** — rotina e tarefas ("missões") reais.
 
 ## Referências reais (entradas do projeto)
 

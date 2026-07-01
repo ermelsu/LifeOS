@@ -1,50 +1,62 @@
 import { GameClock } from '@domain/clock/GameClock.ts';
 import { LifeStore } from '@domain/state/LifeStore.ts';
-import { createInitialLifeState } from '@domain/state/LifeState.ts';
+import { createInitialLifeState, normalizeLifeState } from '@domain/state/LifeState.ts';
 import { LifeStateRepository } from '@data/LifeStateRepository.ts';
 import { createGame } from '@game/createGame.ts';
 import { SaveIndicator } from '@ui/SaveIndicator.ts';
+import { ModeBar, type AppMode } from '@ui/ModeBar.ts';
+import { HouseBuilder } from '@ui/builder/HouseBuilder.ts';
 import { SaveLoop } from './SaveLoop.ts';
 
 /**
- * Ponto de composição do LifeOS (camada `app`, seção 6).
- *
- * Responsável por instanciar cada camada e conectá-las na ordem certa:
- *   domínio (relógio + store) → dados (carrega estado salvo) → apresentação (Phaser + UI)
- *   → save loop (salvamento automático).
- *
- * É o único lugar que conhece todas as camadas ao mesmo tempo.
+ * Ponto de composição do LifeOS (camada `app`, seção 6). Instancia cada camada e as conecta:
+ *   domínio (relógio + store) → dados (carrega/migra estado) → apresentação (Phaser + construtor)
+ *   → save loop. Também controla os modos Construir/Jogar.
  */
 async function bootstrap(): Promise<void> {
   const gameRoot = document.getElementById('game-root');
   const uiRoot = document.getElementById('ui-root');
   if (!gameRoot || !uiRoot) throw new Error('Elementos raiz (#game-root / #ui-root) não encontrados.');
 
-  // --- Domínio: a fonte da verdade ---
+  // --- Domínio ---
   const clock = new GameClock();
   const store = new LifeStore(createInitialLifeState(clock.now()));
 
-  // --- Dados: carrega o estado salvo, se houver (local-first) ---
+  // --- Dados: carrega e migra o estado salvo (local-first) ---
   const repo = new LifeStateRepository();
   try {
     const saved = await repo.load();
-    if (saved) store.replace(saved);
+    if (saved) store.replace(normalizeLifeState(saved));
   } catch (err) {
-    // Primeira execução, modo privado sem IndexedDB, etc.: seguimos com estado inicial.
     console.warn('[LifeOS] Não foi possível carregar o estado salvo; iniciando do zero.', err);
   }
 
-  // --- Apresentação: Phaser (mundo) + overlays HTML (dados) leem do MESMO domínio ---
-  createGame(gameRoot, clock);
+  // --- Apresentação: Phaser (mundo) + construtor (HTML) leem o MESMO domínio ---
+  const game = createGame(gameRoot, clock, store);
   new SaveIndicator(store, uiRoot);
+  const builder = new HouseBuilder(store, uiRoot);
+  const modeBar = new ModeBar(uiRoot, (mode) => setMode(mode));
 
-  // --- Save loop: salvamento automático desde o Módulo 0 ---
+  // --- Modos ---
+  function setMode(mode: AppMode): void {
+    builder.setVisible(mode === 'build');
+    modeBar.setActive(mode);
+    const kb = game.input.keyboard;
+    if (kb) kb.enabled = mode === 'play'; // no modo Construir o teclado é para digitar
+    if (mode === 'play') {
+      // Relê a casa construída ao entrar no jogo.
+      game.scene.getScene('house')?.scene.restart();
+    }
+  }
+
+  // --- Save loop ---
   const saveLoop = new SaveLoop(store, repo);
   saveLoop.start();
 
-  // Marca o estado como "tocado" na inicialização para gravar o registro inicial
-  // no IndexedDB (prova de que a persistência funciona ponta a ponta).
+  // Grava o estado inicial no IndexedDB (prova a persistência ponta a ponta).
   store.update((s) => ({ ...s, updatedAt: clock.now().toISOString() }));
+
+  setMode('build');
 }
 
 bootstrap().catch((err) => {
