@@ -1,0 +1,71 @@
+/* LifeOS — estilos base. Os painéis de dados densos (inventário, finanças, tarefas)
+   são HTML/DOM por cima do canvas do Phaser (seção 6). */
+
+:root {
+  --bg: #0d1220;
+  --ink: #f4f1e8;
+  --muted: #9aa0a6;
+  --accent: #c9a86a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* O canvas do mundo ocupa o fundo. */
+#game-root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game-root canvas {
+  image-rendering: pixelated;
+}
+
+/* Os overlays HTML ficam por cima; por padrão não capturam clique para "a interface
+   desaparecer" (seção 3). Cada painel reativa pointer-events quando visível. */
+#ui-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#ui-root .panel {
+  pointer-events: auto;
+}
+
+/* Indicador discreto de salvamento (canto inferior direito). */
+.save-indicator {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: monospace;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.save-indicator.visible {
+  opacity: 0.8;
+}
