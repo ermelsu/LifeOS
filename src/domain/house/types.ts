@@ -1,10 +1,6 @@
 /**
- * Tipos da planta da casa — parte do MODELO DE DOMÍNIO (seção 6). São dados puros, em
- * coordenadas de tile, sem qualquer dependência de Phaser. A camada `game/` lê daqui para
- * montar o mundo; os painéis HTML também poderão ler.
- *
- * Coordenadas: tudo em TILES (não pixels). A conversão para pixels acontece na apresentação
- * usando `HouseLayout.tileSize`.
+ * Tipos da planta da casa — MODELO DE DOMÍNIO (seção 6). Dados puros em coordenadas de TILE,
+ * sem dependência de Phaser. A conversão para pixels acontece na apresentação.
  */
 
 /** Áreas da vida representadas pelos cômodos (seção 8). */
@@ -17,6 +13,9 @@ export type LifeArea =
   | 'trabalho'
   | 'caes'
   | 'circulacao';
+
+/** Tipo de piso (define a textura ladrilhada — inspirado na referência estética). */
+export type FloorType = 'wood' | 'brick' | 'carpet' | 'tile' | 'grass' | 'parquet' | 'deck';
 
 export interface Tile {
   x: number;
@@ -31,10 +30,7 @@ export interface TileRect {
   h: number;
 }
 
-/**
- * Marcador de atividades pendentes dentro de um cômodo. No Módulo 1 são apenas rótulos
- * placeholder; no Módulo 3 passam a ser `Task`s reais vinculadas a objetos (Regra Nº 1).
- */
+/** Marcador de atividades pendentes dentro de um cômodo (placeholder até o Módulo 3). */
 export interface RoomActivity {
   tile: Tile;
   labels: string[];
@@ -44,7 +40,7 @@ export interface RoomActivity {
 export interface RoomSubarea {
   nome: string;
   rect: TileRect;
-  color: number;
+  floorType: FloorType;
 }
 
 export interface Room {
@@ -53,8 +49,7 @@ export interface Room {
   lifeArea: LifeArea;
   /** Área de piso caminhável (interior do cômodo), em tiles. */
   floor: TileRect;
-  /** Cor placeholder do piso (substituída por tiles de arte depois). */
-  color: number;
+  floorType: FloorType;
   subareas?: RoomSubarea[];
   activity?: RoomActivity;
 }

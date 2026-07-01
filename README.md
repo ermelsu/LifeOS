@@ -82,21 +82,26 @@ Esqueleto jogável da **casa inteira**, com placeholders (retângulos), para tes
 - [x] **Portas** entre cômodos que o personagem **abre** (aproxime-se + `E`/Espaço).
 - [x] **Atividades pendentes** dentro de cada cômodo (marcadores `!`; `E` mostra a lista).
 - [x] **Iluminação em tempo real** pela hora do dia (overlay que muda de amanhecer a noite).
+- [x] **Visual no clima da referência** (`docs/referencias/estetica.md`): pisos ladrilhados por
+      cômodo (parquet, carpete, ladrilho, tijolo, grama, deck), paredes de madeira com trilho
+      alaranjado e luzes quentes — tudo em tiles procedurais originais (nada copiado; decisão nº 9).
 - [x] Testes da planta + geração da grade de colisão; smoke test no navegador (Chromium).
 
 Cômodos no mapa: Sala, Corredor, Quarto (com Banheiro suíte), Escritório, Cozinha, e as áreas
 dos cães (Grade e Jardim, com o deck/lavanderia). O "quarto da bagunça da mudança" fica fora do
 mapa — só a ação de ajeitá-lo, exposta no Corredor.
 
-**Falta para fechar o Módulo 1:** substituir placeholders por tilemap/arte e sprite animado do
-personagem; refinar a curva de iluminação. **A confirmar com o Emerson:** se o Corredor e as áreas
-dos cães são caminháveis ou só painéis.
+**Próximo passo combinado:** transformar isto num **construtor de casa** — o Emerson desenha os
+próprios cômodos (parede, porta, tipo de piso) e a planta é salva no IndexedDB, no lugar da planta
+fixa de placeholder. Depois: móveis/objetos (que viram tarefas), sprite animado do personagem e
+arte pixel definitiva. **A confirmar:** se o Corredor e as áreas dos cães são caminháveis ou só painéis.
 
 ### Próximos módulos
 
-1. **Módulo 2** — objetos e estados (flagship: a Pia com 4 estados), persistindo no IndexedDB.
-2. **Módulo 3** — rotina e tarefas ("missões") reais no lugar dos marcadores placeholder.
-3. … (streak, estoque, finanças, cachorros, gamificação, assistente — ver documento-mestre).
+1. **Construtor de casa** — planta editável e persistida (substitui a planta fixa).
+2. **Módulo 2** — objetos e estados (flagship: a Pia com 4 estados), persistindo no IndexedDB.
+3. **Módulo 3** — rotina e tarefas ("missões") reais no lugar dos marcadores placeholder.
+4. … (streak, estoque, finanças, cachorros, gamificação, assistente — ver documento-mestre).
 
 ## Referências reais (entradas do projeto)
 

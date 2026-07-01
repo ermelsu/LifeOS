@@ -17,25 +17,13 @@ import { type HouseLayout, type Room, rectContains } from './types.ts';
 
 const TILE = 32;
 
-// Cores placeholder por cômodo (trocáveis por tiles de arte no futuro).
-const COR = {
-  sala: 0x3c5a4a,
-  corredor: 0x4a4a3c,
-  quarto: 0x3a4a5c,
-  banheiro: 0x2f5560,
-  escritorio: 0x4a3a5c,
-  cozinha: 0x5c4a3a,
-  grade: 0x3a5c3a,
-  jardim: 0x2f6b3a,
-} as const;
-
 const rooms: Room[] = [
   {
     id: 'sala',
     nome: 'Sala',
     lifeArea: 'conforto',
     floor: { x: 27, y: 2, w: 14, h: 13 },
-    color: COR.sala,
+    floorType: 'parquet',
     activity: { tile: { x: 30, y: 6 }, labels: ['Lazer (TV / videogame)', 'Descansar (sofá)'] },
   },
   {
@@ -43,7 +31,7 @@ const rooms: Room[] = [
     nome: 'Corredor',
     lifeArea: 'circulacao',
     floor: { x: 6, y: 2, w: 20, h: 3 },
-    color: COR.corredor,
+    floorType: 'wood',
     // O "quarto da bagunça da mudança" não é caminhável: só a ação, exposta aqui.
     activity: { tile: { x: 23, y: 3 }, labels: ['Ajeitar quarto da bagunça da mudança'] },
   },
@@ -52,7 +40,7 @@ const rooms: Room[] = [
     nome: 'Escritório',
     lifeArea: 'trabalho',
     floor: { x: 6, y: 6, w: 9, h: 8 },
-    color: COR.escritorio,
+    floorType: 'wood',
     activity: {
       tile: { x: 10, y: 10 },
       labels: ['Ajeitar guarda-roupa', 'Trabalhar / editar vídeo (computador)'],
@@ -63,8 +51,8 @@ const rooms: Room[] = [
     nome: 'Quarto',
     lifeArea: 'descanso',
     floor: { x: 16, y: 6, w: 10, h: 8 },
-    color: COR.quarto,
-    subareas: [{ nome: 'Banheiro (suíte)', rect: { x: 22, y: 6, w: 4, h: 3 }, color: COR.banheiro }],
+    floorType: 'carpet',
+    subareas: [{ nome: 'Banheiro (suíte)', rect: { x: 22, y: 6, w: 4, h: 3 }, floorType: 'tile' }],
     activity: { tile: { x: 18, y: 11 }, labels: ['Arrumar cama', 'Higiene (banheiro / suíte)'] },
   },
   {
@@ -72,7 +60,7 @@ const rooms: Room[] = [
     nome: 'Cozinha',
     lifeArea: 'alimentacao',
     floor: { x: 27, y: 16, w: 14, h: 7 },
-    color: COR.cozinha,
+    floorType: 'brick',
     activity: {
       tile: { x: 33, y: 19 },
       labels: ['Lavar louça (pia)', 'Preparar refeição (fogão)', 'Guardar compras (geladeira)'],
@@ -83,7 +71,7 @@ const rooms: Room[] = [
     nome: 'Cachorros — Grade',
     lifeArea: 'caes',
     floor: { x: 6, y: 25, w: 16, h: 7 },
-    color: COR.grade,
+    floorType: 'grass',
     activity: { tile: { x: 13, y: 28 }, labels: ['Cuidar dos cães da grade (5)'] },
   },
   {
@@ -91,10 +79,8 @@ const rooms: Room[] = [
     nome: 'Cachorros — Jardim',
     lifeArea: 'caes',
     floor: { x: 23, y: 25, w: 18, h: 7 },
-    color: COR.jardim,
-    subareas: [
-      { nome: 'Deck / Lavanderia', rect: { x: 37, y: 25, w: 4, h: 3 }, color: 0x3a5c5c },
-    ],
+    floorType: 'grass',
+    subareas: [{ nome: 'Deck / Lavanderia', rect: { x: 37, y: 25, w: 4, h: 3 }, floorType: 'deck' }],
     activity: {
       tile: { x: 30, y: 28 },
       labels: ['Cuidar dos cães do jardim (9 maiores + 5 chihuahuas)', 'Lavar roupa (deck)'],

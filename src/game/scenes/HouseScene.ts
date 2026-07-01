@@ -2,18 +2,22 @@ import Phaser from 'phaser';
 import { type GameClock, type DayPhase } from '@domain/clock/GameClock.ts';
 import { type Door } from '@domain/house/types.ts';
 import { houseLayout, roomAt } from '@domain/house/houseLayout.ts';
-import { buildGrid, mergeWalls } from '@game/world/buildGrid.ts';
+import { buildGrid, mergeWalls, FLOOR } from '@game/world/buildGrid.ts';
+import { createTileTextures, floorKey } from '@game/world/textures.ts';
 import { Player } from '@game/entities/Player.ts';
 
 /** Tom/opacidade do overlay de luz por fase do dia (iluminação em tempo real, seção 5). */
 const PHASE_LIGHT: Record<DayPhase, { color: number; alpha: number }> = {
-  madrugada: { color: 0x001028, alpha: 0.55 },
-  amanhecer: { color: 0xff8a3c, alpha: 0.22 },
+  madrugada: { color: 0x0a1430, alpha: 0.5 },
+  amanhecer: { color: 0xff8a3c, alpha: 0.18 },
   dia: { color: 0x000000, alpha: 0.0 },
-  tarde: { color: 0xffb15c, alpha: 0.12 },
-  anoitecer: { color: 0x6a2b55, alpha: 0.32 },
-  noite: { color: 0x001028, alpha: 0.5 },
+  tarde: { color: 0xffb15c, alpha: 0.1 },
+  anoitecer: { color: 0x6a2b55, alpha: 0.28 },
+  noite: { color: 0x0a1430, alpha: 0.46 },
 };
+
+/** Cômodos internos que recebem uma luz quente (as áreas externas não). */
+const GLOW_ROOMS = new Set(['sala', 'corredor', 'escritorio', 'quarto', 'cozinha']);
 
 interface DoorEntry {
   door: Door;
@@ -30,12 +34,10 @@ interface ActivityEntry {
 }
 
 /**
- * HouseScene — o mundo caminhável (Módulo 1). Monta a casa inteira a partir da planta do
- * domínio: pisos, paredes, portas que o personagem abre, e marcadores de atividades
- * pendentes dentro de cada cômodo. O relógio real controla a iluminação.
- *
- * Ainda são placeholders (retângulos). Toda a fonte da verdade (layout, cômodos, atividades)
- * mora no domínio; a cena só renderiza e reage.
+ * HouseScene — o mundo caminhável, agora com visual no clima da referência
+ * (`docs/referencias/estetica.md`): pisos ladrilhados por cômodo, paredes de madeira com
+ * trilho alaranjado, portas e luzes quentes. Toda a fonte da verdade (planta) mora no
+ * domínio; a cena só renderiza e reage. Arte ainda é placeholder original, trocável depois.
  */
 export class HouseScene extends Phaser.Scene {
   private readonly clock: GameClock;
@@ -62,6 +64,8 @@ export class HouseScene extends Phaser.Scene {
   }
 
   create(): void {
+    createTileTextures(this);
+
     const layout = houseLayout;
     const ts = layout.tileSize;
     const worldW = layout.larguraTiles * ts;
@@ -69,6 +73,7 @@ export class HouseScene extends Phaser.Scene {
 
     this.physics.world.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBounds(0, 0, worldW, worldH);
+    this.cameras.main.setBackgroundColor('#060608');
 
     this.buildFloors();
     this.buildWalls();
@@ -82,11 +87,10 @@ export class HouseScene extends Phaser.Scene {
     this.physics.add.collider(this.player.gameObject, this.doors.map((d) => d.rect));
     this.cameras.main.startFollow(this.player.gameObject, true, 0.1, 0.1);
 
-    // --- Iluminação em tempo real (cobre o mundo inteiro) ---
-    this.lightOverlay = this.add
-      .rectangle(0, 0, worldW, worldH, 0x000000, 0)
-      .setOrigin(0, 0)
-      .setDepth(900);
+    this.buildGlows();
+
+    // --- Iluminação global por hora do dia (cobre o mundo inteiro) ---
+    this.lightOverlay = this.add.rectangle(0, 0, worldW, worldH, 0x000000, 0).setOrigin(0, 0).setDepth(900);
 
     this.buildHud();
     this.buildInput();
@@ -98,38 +102,24 @@ export class HouseScene extends Phaser.Scene {
     for (const room of houseLayout.rooms) {
       const f = room.floor;
       this.add
-        .rectangle((f.x + f.w / 2) * ts, (f.y + f.h / 2) * ts, f.w * ts, f.h * ts, room.color)
+        .tileSprite((f.x + f.w / 2) * ts, (f.y + f.h / 2) * ts, f.w * ts, f.h * ts, floorKey(room.floorType))
         .setDepth(0);
 
       for (const sub of room.subareas ?? []) {
         const r = sub.rect;
         this.add
-          .rectangle((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, r.w * ts, r.h * ts, sub.color)
+          .tileSprite((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, r.w * ts, r.h * ts, floorKey(sub.floorType))
           .setDepth(1);
-        this.add
-          .text((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, sub.nome, { fontFamily: 'monospace', fontSize: '10px', color: '#dfe6ee' })
-          .setOrigin(0.5)
-          .setDepth(1)
-          .setAlpha(0.7);
+        this.label((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, sub.nome, 10, '#eef3f6', 1).setAlpha(0.75);
       }
 
-      // Nome do cômodo (discreto, ajuda a testar).
-      this.add
-        .text((f.x + f.w / 2) * ts, f.y * ts + 12, room.nome, { fontFamily: 'monospace', fontSize: '13px', color: '#f4f1e8' })
-        .setOrigin(0.5, 0)
-        .setDepth(1)
-        .setAlpha(0.75);
+      this.label((f.x + f.w / 2) * ts, f.y * ts + 14, room.nome, 13, '#fff4e0', 4);
 
-      // Marcador de atividades pendentes.
       if (room.activity) {
         const ax = (room.activity.tile.x + 0.5) * ts;
         const ay = (room.activity.tile.y + 0.5) * ts;
-        const marker = this.add.rectangle(ax, ay, ts * 0.5, ts * 0.5, 0xffe066).setDepth(6);
-        this.add
-          .text(ax, ay - ts * 0.55, '!', { fontFamily: 'monospace', fontSize: '16px', color: '#ffe066' })
-          .setOrigin(0.5, 1)
-          .setDepth(6);
-        this.tweens.add({ targets: marker, scale: 1.25, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.inOut' });
+        const marker = this.add.star(ax, ay, 5, ts * 0.16, ts * 0.34, 0xffe066).setDepth(6);
+        this.tweens.add({ targets: marker, scale: 1.2, yoyo: true, repeat: -1, duration: 750, ease: 'Sine.inOut' });
         this.activities.push({ labels: room.activity.labels, cx: ax, cy: ay });
       }
     }
@@ -137,10 +127,26 @@ export class HouseScene extends Phaser.Scene {
 
   private buildWalls(): void {
     const ts = houseLayout.tileSize;
-    const walls = mergeWalls(buildGrid(houseLayout));
+    const grid = buildGrid(houseLayout);
+
+    // Paredes VISÍVEIS: só os tiles de parede que encostam em algum piso — isso desenha o
+    // contorno de cada cômodo/corredor, deixando os vãos das portas abertos.
+    const isFloor = (x: number, y: number): boolean => (grid[y]?.[x] ?? 0) === FLOOR;
+    for (let y = 0; y < grid.length; y++) {
+      const row = grid[y];
+      if (!row) continue;
+      for (let x = 0; x < row.length; x++) {
+        if ((row[x] ?? 0) === FLOOR) continue;
+        if (isFloor(x - 1, y) || isFloor(x + 1, y) || isFloor(x, y - 1) || isFloor(x, y + 1)) {
+          this.add.image((x + 0.5) * ts, (y + 0.5) * ts, 'wall').setDepth(3);
+        }
+      }
+    }
+
+    // Colisão: paredes juntadas em retângulos invisíveis (todos os tiles de parede).
     const rects: Phaser.GameObjects.Rectangle[] = [];
-    for (const w of walls) {
-      const r = this.add.rectangle((w.x + w.w / 2) * ts, (w.y + 0.5) * ts, w.w * ts, ts, 0x23262f).setDepth(2);
+    for (const w of mergeWalls(grid)) {
+      const r = this.add.rectangle((w.x + w.w / 2) * ts, (w.y + 0.5) * ts, w.w * ts, ts).setVisible(false);
       this.physics.add.existing(r, true);
       rects.push(r);
     }
@@ -152,21 +158,43 @@ export class HouseScene extends Phaser.Scene {
     for (const door of houseLayout.doors) {
       const cx = (door.tile.x + 0.5) * ts;
       const cy = (door.tile.y + 0.5) * ts;
-      const w = door.orientacao === 'v' ? ts * 0.4 : ts;
-      const h = door.orientacao === 'v' ? ts : ts * 0.4;
-      const rect = this.add.rectangle(cx, cy, w, h, 0x8a5a2b).setDepth(5);
+      // Piso no vão da porta, para o buraco não mostrar o vazio.
+      this.add.tileSprite(cx, cy, ts, ts, floorKey('wood')).setDepth(0);
+
+      const w = door.orientacao === 'v' ? ts * 0.42 : ts;
+      const h = door.orientacao === 'v' ? ts : ts * 0.42;
+      const rect = this.add.rectangle(cx, cy, w, h, 0x7a4a24).setStrokeStyle(2, 0xc07a2e).setDepth(5);
       this.physics.add.existing(rect, true);
       this.doors.push({ door, rect, cx, cy, open: false });
     }
   }
 
+  private buildGlows(): void {
+    const ts = houseLayout.tileSize;
+    for (const room of houseLayout.rooms) {
+      if (!GLOW_ROOMS.has(room.id)) continue;
+      const f = room.floor;
+      const glow = this.add
+        .image((f.x + f.w / 2) * ts, (f.y + f.h / 2) * ts, 'glow')
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(950)
+        .setScale(Math.max(f.w, f.h) / 5)
+        .setAlpha(0.2);
+      this.tweens.add({ targets: glow, alpha: 0.3, yoyo: true, repeat: -1, duration: 2200, ease: 'Sine.inOut' });
+    }
+  }
+
+  private label(x: number, y: number, text: string, size: number, color: string, depth: number): Phaser.GameObjects.Text {
+    return this.add
+      .text(x, y, text, { fontFamily: 'monospace', fontSize: `${size}px`, color, stroke: '#000000', strokeThickness: 3 })
+      .setOrigin(0.5, 0)
+      .setDepth(depth);
+  }
+
   private buildHud(): void {
     const style = { fontFamily: 'monospace', fontSize: '14px', color: '#f4f1e8' } as const;
     this.hudText = this.add.text(10, 8, '', style).setScrollFactor(0).setDepth(2000);
-    this.roomText = this.add
-      .text(10, 28, '', { ...style, color: '#c9a86a' })
-      .setScrollFactor(0)
-      .setDepth(2000);
+    this.roomText = this.add.text(10, 28, '', { ...style, color: '#c9a86a' }).setScrollFactor(0).setDepth(2000);
     this.add
       .text(10, this.scale.height - 22, 'Mover: WASD / setas   ·   Interagir: E / Espaço', { ...style, fontSize: '12px', color: '#9aa0a6' })
       .setScrollFactor(0)
@@ -177,7 +205,7 @@ export class HouseScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(2000);
     this.toastText = this.add
-      .text(this.scale.width / 2, 60, '', { ...style, backgroundColor: '#000000aa', padding: { x: 10, y: 6 }, align: 'center' })
+      .text(this.scale.width / 2, 60, '', { ...style, backgroundColor: '#000000cc', padding: { x: 10, y: 6 }, align: 'center' })
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
       .setDepth(2000)
@@ -242,30 +270,22 @@ export class HouseScene extends Phaser.Scene {
       }
     }
 
-    if (nearestDoor) {
-      this.promptText.setText('[E] abrir porta');
-    } else if (nearestActivity) {
-      this.promptText.setText('[E] ver atividades');
-    } else {
-      this.promptText.setText('');
-    }
+    if (nearestDoor) this.promptText.setText('[E] abrir porta');
+    else if (nearestActivity) this.promptText.setText('[E] ver atividades');
+    else this.promptText.setText('');
 
     const interact =
       Phaser.Input.Keyboard.JustDown(this.keys.e) || Phaser.Input.Keyboard.JustDown(this.keys.space);
     if (!interact) return;
 
-    if (nearestDoor) {
-      this.openDoor(nearestDoor);
-    } else if (nearestActivity) {
-      this.showToast('Atividades pendentes:\n• ' + nearestActivity.labels.join('\n• '));
-    }
+    if (nearestDoor) this.openDoor(nearestDoor);
+    else if (nearestActivity) this.showToast('Atividades pendentes:\n• ' + nearestActivity.labels.join('\n• '));
   }
 
   private openDoor(entry: DoorEntry): void {
     entry.open = true;
-    const body = entry.rect.body as Phaser.Physics.Arcade.StaticBody;
-    body.enable = false;
-    this.tweens.add({ targets: entry.rect, alpha: 0.15, duration: 200 });
+    (entry.rect.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+    this.tweens.add({ targets: entry.rect, alpha: 0.12, duration: 200 });
   }
 
   private showToast(text: string): void {
@@ -281,9 +301,7 @@ export class HouseScene extends Phaser.Scene {
 
   private applyPhase(): void {
     const phase = this.clock.phaseOfDay();
-    if (phase === this.lastPhase) {
-      return;
-    }
+    if (phase === this.lastPhase) return;
     this.lastPhase = phase;
 
     const light = PHASE_LIGHT[phase];
