@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { type GameClock, type DayPhase } from '@domain/clock/GameClock.ts';
 import { type LifeStore } from '@domain/state/LifeStore.ts';
 import { getActiveHouse } from '@domain/state/lifeOps.ts';
+import { type FloorType } from '@domain/house/types.ts';
 import { type HouseModel, roomAtTile, spawnTile } from '@domain/house/model.ts';
 import { buildGrid, mergeWalls, FLOOR } from '@game/world/buildGrid.ts';
 import { createTileTextures, floorKey } from '@game/world/textures.ts';
@@ -46,16 +47,29 @@ export class HouseScene extends Phaser.Scene {
     this.store = store;
   }
 
+  /** Piso do pack por tipo (frame no room_builder 16×16, 17 colunas). grass fica procedural. */
+  private static readonly PACK_FLOOR: Partial<Record<FloorType, { key: string; frame: number }>> = {
+    wood: { key: 'pk-wood', frame: 250 },
+    parquet: { key: 'pk-parquet', frame: 250 },
+    brick: { key: 'pk-brick', frame: 114 },
+    carpet: { key: 'pk-carpet', frame: 148 },
+    tile: { key: 'pk-tile', frame: 182 },
+    deck: { key: 'pk-deck', frame: 216 },
+  };
+  private static readonly WALL_FRAME = 239;
+
   preload(): void {
     const base = import.meta.env.BASE_URL;
-    const chars = `${base}assets/moderninteriors/characters`;
-    this.load.spritesheet('adam-idle', `${chars}/adam_idle.png`, { frameWidth: 16, frameHeight: 32 });
-    this.load.spritesheet('adam-walk', `${chars}/adam_run.png`, { frameWidth: 16, frameHeight: 32 });
+    const mi = `${base}assets/moderninteriors`;
+    this.load.spritesheet('adam-idle', `${mi}/characters/adam_idle.png`, { frameWidth: 16, frameHeight: 32 });
+    this.load.spritesheet('adam-walk', `${mi}/characters/adam_run.png`, { frameWidth: 16, frameHeight: 32 });
+    this.load.spritesheet('rooms', `${mi}/tiles/room_builder.png`, { frameWidth: 16, frameHeight: 16 });
   }
 
   create(): void {
     createTileTextures(this);
     this.ensureAnims();
+    this.bakePackTiles();
     this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [] };
 
     const ts = this.tile;
@@ -122,13 +136,39 @@ export class HouseScene extends Phaser.Scene {
     }
   }
 
+  /** Extrai um tile 16×16 do room_builder numa textura própria (evita bleed do TileSprite). */
+  private makeTile(key: string, srcKey: string, frameIndex: number): void {
+    if (this.textures.exists(key)) return;
+    const size = 16;
+    const cols = 17;
+    const canvas = this.textures.createCanvas(key, size, size);
+    if (!canvas) return;
+    const src = this.textures.get(srcKey).getSourceImage() as CanvasImageSource;
+    const sx = (frameIndex % cols) * size;
+    const sy = Math.floor(frameIndex / cols) * size;
+    canvas.context.drawImage(src, sx, sy, size, size, 0, 0, size, size);
+    canvas.refresh();
+  }
+
+  private bakePackTiles(): void {
+    for (const v of Object.values(HouseScene.PACK_FLOOR)) if (v) this.makeTile(v.key, 'rooms', v.frame);
+    this.makeTile('pk-wall', 'rooms', HouseScene.WALL_FRAME);
+  }
+
   private buildFloors(): void {
     const ts = this.tile;
     for (const room of this.house.rooms) {
       const r = room.rect;
-      this.add
-        .tileSprite((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, r.w * ts, r.h * ts, floorKey(room.floorType))
-        .setDepth(0);
+      const pack = HouseScene.PACK_FLOOR[room.floorType];
+      const floor = pack
+        ? this.add.tileSprite((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, r.w * ts, r.h * ts, pack.key)
+        : this.add.tileSprite((r.x + r.w / 2) * ts, (r.y + r.h / 2) * ts, r.w * ts, r.h * ts, floorKey(room.floorType));
+      // Tiles do pack são 16px; escala 2× para casar com o mundo (32px) e com o personagem.
+      if (pack) {
+        floor.tileScaleX = 2;
+        floor.tileScaleY = 2;
+      }
+      floor.setDepth(0);
       this.add
         .text((r.x + r.w / 2) * ts, r.y * ts + 12, room.nome, {
           fontFamily: 'monospace', fontSize: '13px', color: '#fff4e0', stroke: '#000000', strokeThickness: 3,
@@ -152,7 +192,7 @@ export class HouseScene extends Phaser.Scene {
       for (let x = 0; x < row.length; x++) {
         if ((row[x] ?? 0) === FLOOR) continue;
         if (isFloor(x - 1, y) || isFloor(x + 1, y) || isFloor(x, y - 1) || isFloor(x, y + 1)) {
-          this.add.image((x + 0.5) * ts, (y + 0.5) * ts, 'wall').setDepth(3);
+          this.add.image((x + 0.5) * ts, (y + 0.5) * ts, 'pk-wall').setDisplaySize(ts, ts).setDepth(3);
         }
       }
     }
