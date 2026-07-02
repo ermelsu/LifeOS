@@ -1,4 +1,4 @@
-import { type HouseModel } from '@domain/house/model.ts';
+import { type HouseModel, MIN_HOUSE_W, MIN_HOUSE_H } from '@domain/house/model.ts';
 import { type Character } from '@domain/character/model.ts';
 import { templateHouse } from '@domain/house/template.ts';
 
@@ -45,8 +45,13 @@ interface LegacyV2 {
  *  - v1: sem casa alguma;
  *  - v2: uma única `house` → vira `houses:[house]` com essa casa ativa.
  */
+/** Garante o grid mínimo (só cresce; nunca encolhe abaixo dos cômodos existentes). */
+function ensureMinGrid(h: HouseModel): HouseModel {
+  return { ...h, larguraTiles: Math.max(h.larguraTiles, MIN_HOUSE_W), alturaTiles: Math.max(h.alturaTiles, MIN_HOUSE_H) };
+}
+
 export function normalizeLifeState(state: LifeState): LifeState {
-  const houses = Array.isArray(state.houses) ? state.houses : [];
+  const houses = (Array.isArray(state.houses) ? state.houses : []).map(ensureMinGrid);
   const legacyHouse = (state as LifeState & LegacyV2).house;
   if (houses.length === 0 && legacyHouse) {
     const migrated: HouseModel = legacyHouse.id ? legacyHouse : { ...templateHouse(), rooms: legacyHouse.rooms ?? [] };

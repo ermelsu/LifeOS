@@ -395,6 +395,19 @@ body {
   margin: 14px 0;
 }
 
+.builder-side .zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.builder-side .zoom-row button {
+  width: 40px;
+  margin: 0;
+  font-size: 16px;
+  padding: 4px;
+}
+
 /* Indicador discreto de salvamento (canto inferior direito). */
 .save-indicator {
   position: absolute;

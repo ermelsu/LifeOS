@@ -10,7 +10,7 @@ import { type HouseModel, addRoom, createEmptyHouse } from './model.ts';
  * conectados por passagens abertas — não há portas neste modelo.
  */
 export function templateHouse(): HouseModel {
-  let h = createEmptyHouse('Minha casa', 48, 34);
+  let h = createEmptyHouse('Minha casa');
   // Ordem importa: cômodos desenhados depois ficam por cima (sub-cômodos por último).
   h = addRoom(h, { x: 6, y: 2, w: 21, h: 3 }, { nome: 'Corredor', lifeArea: 'circulacao', floorType: 'wood' });
   h = addRoom(h, { x: 27, y: 2, w: 14, h: 13 }, { nome: 'Sala', lifeArea: 'conforto', floorType: 'parquet' });

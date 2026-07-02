@@ -14,28 +14,40 @@ import {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/** Alças de redimensionamento (cantos + meios das bordas) e o cursor de cada uma. */
+type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+const HANDLE_CURSOR: Record<Handle, string> = {
+  nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize',
+  n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize',
+};
+
 interface DragState {
-  mode: 'draw' | 'move';
+  mode: 'draw' | 'move' | 'resize';
   startTile: Tile;
   curTile: Tile;
   roomId?: string;
   offset?: Tile;
+  handle?: Handle;
+  orig?: TileRect;
 }
+
+const ZOOM_MIN = 12;
+const ZOOM_MAX = 40;
 
 /**
  * HouseBuilder — o construtor de casa (modo Construir). Editor HTML/SVG que lê e escreve a
  * `HouseModel` no LifeStore (fonte da verdade); o SaveLoop persiste no IndexedDB. O modo Jogar
  * (Phaser) lê o mesmo modelo. Assim o Emerson constrói a casa cômodo a cômodo, igual à real.
  *
- * Interações: arrastar em área vazia cria um cômodo; clicar num cômodo o seleciona; arrastar um
- * cômodo o move; o painel edita nome / área / piso e exclui.
+ * Interações: arrastar no vazio cria um cômodo; clicar seleciona; arrastar o cômodo o move;
+ * arrastar as ALÇAS redimensiona; o painel edita nome / área / piso, faz zoom e exclui.
  */
 export class HouseBuilder {
   private readonly store: LifeStore;
   private readonly el: HTMLDivElement;
   private readonly svg: SVGSVGElement;
   private readonly panel: HTMLDivElement;
-  private readonly px = 16;
+  private px = 22;
 
   private selectedId: string | null = null;
   private drag: DragState | null = null;
@@ -76,6 +88,10 @@ export class HouseBuilder {
     this.store.update((s) => replaceActiveHouse(s, next));
   }
 
+  private clampZoom(px: number): number {
+    return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, px));
+  }
+
   // --- Interação com ponteiro ---
 
   private attachPointer(): void {
@@ -100,13 +116,23 @@ export class HouseBuilder {
     const house = this.house();
     if (!house) return;
     const tile = this.tileFromEvent(e);
-    const hit = roomAtTile(house, tile.x, tile.y);
     this.svg.setPointerCapture(e.pointerId);
 
+    // 1) Alça de redimensionamento do cômodo selecionado?
+    const handle = (e.target as Element).getAttribute('data-handle') as Handle | null;
+    const selected = house.rooms.find((r) => r.id === this.selectedId);
+    if (handle && selected) {
+      this.drag = { mode: 'resize', startTile: tile, curTile: tile, roomId: selected.id, handle, orig: { ...selected.rect } };
+      return;
+    }
+
+    // 2) Clique num cômodo → seleciona e prepara mover.
+    const hit = roomAtTile(house, tile.x, tile.y);
     if (hit) {
       this.selectedId = hit.id;
       this.drag = { mode: 'move', startTile: tile, curTile: tile, roomId: hit.id, offset: { x: tile.x - hit.rect.x, y: tile.y - hit.rect.y } };
     } else {
+      // 3) Vazio → desenha um cômodo novo.
       this.selectedId = null;
       this.drag = { mode: 'draw', startTile: tile, curTile: tile };
     }
@@ -115,21 +141,42 @@ export class HouseBuilder {
 
   private onPointerMove(e: PointerEvent): void {
     if (!this.drag) return;
+    const house = this.house();
+    if (!house) return;
     const tile = this.tileFromEvent(e);
     this.drag.curTile = tile;
 
     if (this.drag.mode === 'move' && this.drag.roomId && this.drag.offset) {
-      const house = this.house();
-      const room = house?.rooms.find((r) => r.id === this.drag?.roomId);
-      if (!house || !room) return;
+      const room = house.rooms.find((r) => r.id === this.drag?.roomId);
+      if (!room) return;
       const nx = Math.max(0, Math.min(house.larguraTiles - room.rect.w, tile.x - this.drag.offset.x));
       const ny = Math.max(0, Math.min(house.alturaTiles - room.rect.h, tile.y - this.drag.offset.y));
       if (nx !== room.rect.x || ny !== room.rect.y) {
         this.setHouse(updateRoom(house, room.id, { rect: { ...room.rect, x: nx, y: ny } }));
       }
+    } else if (this.drag.mode === 'resize' && this.drag.roomId && this.drag.handle && this.drag.orig) {
+      this.setHouse(updateRoom(house, this.drag.roomId, { rect: this.resizedRect(house, this.drag.orig, this.drag.handle, tile) }));
     } else {
       this.render();
     }
+  }
+
+  /** Novo retângulo ao arrastar uma alça: a borda oposta fica fixa (vinda de `orig`). */
+  private resizedRect(house: HouseModel, orig: TileRect, handle: Handle, t: Tile): TileRect {
+    let { x, y, w, h } = orig;
+    if (handle.includes('e')) w = Math.max(1, Math.min(house.larguraTiles - x, t.x - x + 1));
+    if (handle.includes('s')) h = Math.max(1, Math.min(house.alturaTiles - y, t.y - y + 1));
+    if (handle.includes('w')) {
+      const right = orig.x + orig.w;
+      x = Math.max(0, Math.min(right - 1, t.x));
+      w = right - x;
+    }
+    if (handle.includes('n')) {
+      const bottom = orig.y + orig.h;
+      y = Math.max(0, Math.min(bottom - 1, t.y));
+      h = bottom - y;
+    }
+    return { x, y, w, h };
   }
 
   private onPointerUp(e: PointerEvent): void {
@@ -164,37 +211,55 @@ export class HouseBuilder {
       this.panel.innerHTML = '<h2>🔨 Construir casa</h2><p class="dim">Nenhuma casa ativa.</p>';
       return;
     }
-    const w = house.larguraTiles * this.px;
-    const h = house.alturaTiles * this.px;
+    const px = this.px;
+    const w = house.larguraTiles * px;
+    const h = house.alturaTiles * px;
     this.svg.setAttribute('width', String(w));
     this.svg.setAttribute('height', String(h));
     this.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    this.svg.style.setProperty('--px', `${this.px}px`);
+    this.svg.style.setProperty('--px', `${px}px`);
 
     const parts: string[] = [];
     for (const room of house.rooms) {
       const r = room.rect;
       const selected = room.id === this.selectedId;
       parts.push(
-        `<rect x="${r.x * this.px}" y="${r.y * this.px}" width="${r.w * this.px}" height="${r.h * this.px}" ` +
-          `fill="${FLOOR_HEX[room.floorType]}" fill-opacity="0.85" ` +
+        `<rect x="${r.x * px}" y="${r.y * px}" width="${r.w * px}" height="${r.h * px}" ` +
+          `fill="${FLOOR_HEX[room.floorType]}" fill-opacity="0.9" ` +
           `stroke="${selected ? '#ffd27f' : '#00000066'}" stroke-width="${selected ? 2.5 : 1}" />`,
-        `<text x="${(r.x + r.w / 2) * this.px}" y="${(r.y + r.h / 2) * this.px}" fill="#fff4e0" ` +
-          `font-size="11" font-family="monospace" text-anchor="middle" dominant-baseline="middle" ` +
+        `<text x="${(r.x + r.w / 2) * px}" y="${(r.y + r.h / 2) * px}" fill="#fff4e0" ` +
+          `font-size="12" font-family="monospace" text-anchor="middle" dominant-baseline="middle" ` +
           `style="pointer-events:none">${escapeHtml(room.nome)}</text>`,
       );
+      if (selected) parts.push(this.handlesSvg(r));
     }
 
     if (this.drag?.mode === 'draw') {
       const r = this.rectFromTiles(this.drag.startTile, this.drag.curTile);
       parts.push(
-        `<rect x="${r.x * this.px}" y="${r.y * this.px}" width="${r.w * this.px}" height="${r.h * this.px}" ` +
+        `<rect x="${r.x * px}" y="${r.y * px}" width="${r.w * px}" height="${r.h * px}" ` +
           `fill="#ffffff22" stroke="#ffd27f" stroke-width="1.5" stroke-dasharray="4 3" style="pointer-events:none" />`,
       );
     }
 
     this.svg.innerHTML = parts.join('');
     this.renderPanel();
+  }
+
+  private handlesSvg(r: TileRect): string {
+    const px = this.px;
+    const hs = 9; // tamanho da alça em px
+    const pts: [Handle, number, number][] = [
+      ['nw', r.x, r.y], ['n', r.x + r.w / 2, r.y], ['ne', r.x + r.w, r.y],
+      ['e', r.x + r.w, r.y + r.h / 2], ['se', r.x + r.w, r.y + r.h],
+      ['s', r.x + r.w / 2, r.y + r.h], ['sw', r.x, r.y + r.h], ['w', r.x, r.y + r.h / 2],
+    ];
+    return pts
+      .map(([hName, cx, cy]) =>
+        `<rect data-handle="${hName}" x="${cx * px - hs / 2}" y="${cy * px - hs / 2}" width="${hs}" height="${hs}" ` +
+        `fill="#ffd27f" stroke="#5a3a1a" stroke-width="1" style="cursor:${HANDLE_CURSOR[hName]}" />`,
+      )
+      .join('');
   }
 
   private renderPanel(): void {
@@ -211,7 +276,12 @@ export class HouseBuilder {
 
     this.panel.innerHTML = `
       <h2>🔨 Construir casa</h2>
-      <p class="hint">Arraste no vazio para criar um cômodo. Clique para selecionar; arraste para mover.</p>
+      <p class="hint">Arraste no vazio para criar. Clique para selecionar; arraste para mover; puxe as
+        <b>alças</b> para redimensionar.</p>
+      <div class="field"><label>Zoom</label>
+        <div class="zoom-row"><button id="b-zoomout">－</button><span class="dim">${this.px}px</span><button id="b-zoomin">＋</button></div>
+      </div>
+      <hr />
       ${
         selected
           ? `
@@ -224,7 +294,7 @@ export class HouseBuilder {
           : `<p class="dim">Nenhum cômodo selecionado.</p>`
       }
       <hr />
-      <div class="dim">🏠 ${escapeHtml(house.nome)} · ${house.rooms.length} cômodo(s)</div>
+      <div class="dim">🏠 ${escapeHtml(house.nome)} · ${house.rooms.length} cômodo(s) · grid ${house.larguraTiles}×${house.alturaTiles}</div>
       <button id="b-limpar" class="danger">Limpar cômodos</button>
     `;
 
@@ -236,6 +306,15 @@ export class HouseBuilder {
       const h = this.house();
       if (h) this.setHouse(fn(h));
     };
+
+    this.panel.querySelector('#b-zoomin')?.addEventListener('click', () => {
+      this.px = this.clampZoom(this.px + 4);
+      this.render();
+    });
+    this.panel.querySelector('#b-zoomout')?.addEventListener('click', () => {
+      this.px = this.clampZoom(this.px - 4);
+      this.render();
+    });
 
     const nome = this.panel.querySelector<HTMLInputElement>('#b-nome');
     nome?.addEventListener('input', () => {

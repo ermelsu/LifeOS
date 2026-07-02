@@ -60,7 +60,11 @@ export const FLOOR_HEX: Record<FloorType, string> = {
   deck: '#6f7f86',
 };
 
-export function createEmptyHouse(nome = 'Nova casa', larguraTiles = 48, alturaTiles = 34): HouseModel {
+/** Tamanho mínimo/padrão do grid da casa (em tiles) — espaço folgado para construir. */
+export const MIN_HOUSE_W = 64;
+export const MIN_HOUSE_H = 44;
+
+export function createEmptyHouse(nome = 'Nova casa', larguraTiles = MIN_HOUSE_W, alturaTiles = MIN_HOUSE_H): HouseModel {
   return { id: crypto.randomUUID(), nome, larguraTiles, alturaTiles, rooms: [] };
 }
 
