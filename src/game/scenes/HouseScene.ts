@@ -5,6 +5,7 @@ import { getActiveHouse } from '@domain/state/lifeOps.ts';
 import { type FloorType } from '@domain/house/types.ts';
 import { type HouseModel, roomAtTile, spawnTile } from '@domain/house/model.ts';
 import { FURNITURE, FURNITURE_BY_KIND, ART_TILE } from '@domain/furniture/catalog.ts';
+import { CHARACTERS } from '@domain/character/model.ts';
 import { buildGrid, mergeWalls, FLOOR } from '@game/world/buildGrid.ts';
 import { createTileTextures, floorKey } from '@game/world/textures.ts';
 import { Player } from '@game/entities/Player.ts';
@@ -33,6 +34,7 @@ export class HouseScene extends Phaser.Scene {
   private keys!: { w: Phaser.Input.Keyboard.Key; a: Phaser.Input.Keyboard.Key; s: Phaser.Input.Keyboard.Key; d: Phaser.Input.Keyboard.Key };
 
   private wallRects: Phaser.GameObjects.Rectangle[] = [];
+  private furnitureRects: Phaser.GameObjects.Rectangle[] = [];
   private lightOverlay!: Phaser.GameObjects.Rectangle;
   private lastPhase: DayPhase | null = null;
 
@@ -62,8 +64,10 @@ export class HouseScene extends Phaser.Scene {
   preload(): void {
     const base = import.meta.env.BASE_URL;
     const mi = `${base}assets/moderninteriors`;
-    this.load.spritesheet('adam-idle', `${mi}/characters/adam_idle.png`, { frameWidth: 16, frameHeight: 32 });
-    this.load.spritesheet('adam-walk', `${mi}/characters/adam_run.png`, { frameWidth: 16, frameHeight: 32 });
+    for (const c of CHARACTERS) {
+      this.load.spritesheet(`${c}-idle`, `${mi}/characters/${c}_idle.png`, { frameWidth: 16, frameHeight: 32 });
+      this.load.spritesheet(`${c}-walk`, `${mi}/characters/${c}_run.png`, { frameWidth: 16, frameHeight: 32 });
+    }
     this.load.spritesheet('rooms', `${mi}/tiles/room_builder.png`, { frameWidth: 16, frameHeight: 16 });
     this.load.image('interiors', `${mi}/tiles/interiors.png`);
   }
@@ -101,8 +105,10 @@ export class HouseScene extends Phaser.Scene {
     this.buildFurniture();
 
     const spawn = spawnTile(this.house);
-    this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts);
+    const char = this.store.getState().character?.sprite ?? 'adam';
+    this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts, char);
     this.physics.add.collider(this.player.collider, this.wallRects);
+    this.physics.add.collider(this.player.collider, this.furnitureRects);
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
     this.buildGlows();
@@ -114,28 +120,30 @@ export class HouseScene extends Phaser.Scene {
   }
 
   /**
-   * Cria as animações do personagem (globais ao jogo; criadas uma vez). Layout decodificado
+   * Cria as animações de cada personagem (globais ao jogo; criadas uma vez). Layout decodificado
    * das folhas 16×32 do Modern Interiors: 6 frames por direção, na ordem
-   * esquerda(0–5) · cima(6–11) · direita(12–17) · baixo(18–23).
+   * direita(0–5) · cima(6–11) · esquerda(12–17) · baixo(18–23).
    */
   private ensureAnims(): void {
-    const dirs: [string, number][] = [['left', 0], ['up', 6], ['right', 12], ['down', 18]];
-    for (const [dir, start] of dirs) {
-      if (!this.anims.exists(`walk-${dir}`)) {
-        this.anims.create({
-          key: `walk-${dir}`,
-          frames: this.anims.generateFrameNumbers('adam-walk', { start, end: start + 5 }),
-          frameRate: 10,
-          repeat: -1,
-        });
-      }
-      if (!this.anims.exists(`idle-${dir}`)) {
-        this.anims.create({
-          key: `idle-${dir}`,
-          frames: this.anims.generateFrameNumbers('adam-idle', { start, end: start + 5 }),
-          frameRate: 5,
-          repeat: -1,
-        });
+    const dirs: [string, number][] = [['right', 0], ['up', 6], ['left', 12], ['down', 18]];
+    for (const c of CHARACTERS) {
+      for (const [dir, start] of dirs) {
+        if (!this.anims.exists(`walk-${c}-${dir}`)) {
+          this.anims.create({
+            key: `walk-${c}-${dir}`,
+            frames: this.anims.generateFrameNumbers(`${c}-walk`, { start, end: start + 5 }),
+            frameRate: 10,
+            repeat: -1,
+          });
+        }
+        if (!this.anims.exists(`idle-${c}-${dir}`)) {
+          this.anims.create({
+            key: `idle-${c}-${dir}`,
+            frames: this.anims.generateFrameNumbers(`${c}-idle`, { start, end: start + 5 }),
+            frameRate: 5,
+            repeat: -1,
+          });
+        }
       }
     }
   }
@@ -220,6 +228,7 @@ export class HouseScene extends Phaser.Scene {
 
   private buildFurniture(): void {
     const ts = this.tile;
+    const rects: Phaser.GameObjects.Rectangle[] = [];
     for (const item of this.house.furniture) {
       const def = FURNITURE_BY_KIND[item.kind];
       if (!def) continue;
@@ -228,7 +237,17 @@ export class HouseScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setDisplaySize(def.w * ts, def.h * ts)
         .setDepth(def.flat ? 1 : 6);
+      // Móveis não-planos têm colisão (tapetes, não).
+      if (!def.flat) {
+        const r = this.add
+          .rectangle(item.x * ts, item.y * ts, def.w * ts, def.h * ts)
+          .setOrigin(0, 0)
+          .setVisible(false);
+        this.physics.add.existing(r, true);
+        rects.push(r);
+      }
     }
+    this.furnitureRects = rects;
   }
 
   private buildGlows(): void {
