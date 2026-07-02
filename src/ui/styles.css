@@ -472,6 +472,26 @@ body {
   border-color: var(--accent);
 }
 
+.builder-side h3.sec {
+  font-size: 11px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0 0 8px;
+}
+
+.builder-side .tool {
+  width: 100%;
+  text-align: left;
+  margin: 0 0 8px;
+}
+
+.builder-side .tool.active {
+  background: var(--accent);
+  color: #1a1206;
+  border-color: var(--accent);
+}
+
 .furn-palette {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
