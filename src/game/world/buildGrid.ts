@@ -5,24 +5,28 @@ export const WALL = 0;
 export const FLOOR = 1;
 
 /**
- * Converte a casa construída numa grade de colisão: tudo começa como PAREDE e o piso de cada
- * cômodo vira CHÃO. Como não há portas, cômodos encostados ficam conectados (chão contíguo);
- * paredes visíveis são os tiles de parede que encostam em chão (ver HouseScene).
+ * Converte a casa numa grade de colisão. Cada cômodo tem o anel externo como PAREDE e o
+ * INTERIOR (inset de 1 tile) como CHÃO. Portas abrem o tile da parede para CHÃO, conectando
+ * cômodos que compartilham uma parede. Janelas permanecem parede (sólidas).
  */
 export function buildGrid(house: HouseModel): number[][] {
   const grid: number[][] = Array.from({ length: house.alturaTiles }, () =>
     new Array<number>(house.larguraTiles).fill(WALL),
   );
 
+  const carveFloor = (x: number, y: number): void => {
+    const row = grid[y];
+    if (row && x >= 0 && x < house.larguraTiles) row[x] = FLOOR;
+  };
+
   for (const room of house.rooms) {
     const r = room.rect;
-    for (let y = r.y; y < r.y + r.h; y++) {
-      const row = grid[y];
-      if (!row) continue;
-      for (let x = r.x; x < r.x + r.w; x++) {
-        if (x >= 0 && x < house.larguraTiles) row[x] = FLOOR;
-      }
+    for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
+      for (let x = r.x + 1; x < r.x + r.w - 1; x++) carveFloor(x, y);
     }
+  }
+  for (const item of house.wallItems) {
+    if (item.kind === 'door') carveFloor(item.x, item.y);
   }
 
   return grid;

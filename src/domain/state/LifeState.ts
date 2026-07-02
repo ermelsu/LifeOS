@@ -52,6 +52,7 @@ function ensureMinGrid(h: HouseModel): HouseModel {
     larguraTiles: Math.max(h.larguraTiles, MIN_HOUSE_W),
     alturaTiles: Math.max(h.alturaTiles, MIN_HOUSE_H),
     furniture: Array.isArray(h.furniture) ? h.furniture : [],
+    wallItems: Array.isArray(h.wallItems) ? h.wallItems : [],
   };
 }
 

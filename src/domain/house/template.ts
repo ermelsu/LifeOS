@@ -1,32 +1,41 @@
-import { type HouseModel, addRoom, addFurniture, createEmptyHouse } from './model.ts';
+import { type HouseModel, addRoom, addFurniture, addWallItem, createEmptyHouse } from './model.ts';
 
 /**
- * Casa de EXEMPLO com que o LifeOS começa — fiel às adjacências reais documentadas em
- * `docs/referencias/planta-casa.md` (Sala como hub/entrada; Corredor e áreas dos cães
- * caminháveis). O Emerson começa a partir daqui e edita no construtor, ou limpa tudo e monta
- * do zero.
- *
- * Diferente da planta antiga, os cômodos aqui se ENCOSTAM (compartilham borda) para ficarem
- * conectados por passagens abertas — não há portas neste modelo.
+ * Casa de EXEMPLO. Cada cômodo é um retângulo cujo anel externo é PAREDE e o interior é piso.
+ * Cômodos vizinhos compartilham uma linha/coluna de parede e são ligados por uma PORTA nela.
+ * Há também algumas JANELAS nas paredes externas. O Emerson edita ou refaz no construtor.
  */
 export function templateHouse(): HouseModel {
   let h = createEmptyHouse('Minha casa');
-  // Ordem importa: cômodos desenhados depois ficam por cima (sub-cômodos por último).
-  h = addRoom(h, { x: 6, y: 2, w: 21, h: 3 }, { nome: 'Corredor', lifeArea: 'circulacao', floorType: 'wood' });
-  h = addRoom(h, { x: 27, y: 2, w: 14, h: 13 }, { nome: 'Sala', lifeArea: 'conforto', floorType: 'parquet' });
-  h = addRoom(h, { x: 6, y: 5, w: 9, h: 8 }, { nome: 'Escritório', lifeArea: 'trabalho', floorType: 'wood' });
-  h = addRoom(h, { x: 15, y: 5, w: 11, h: 8 }, { nome: 'Quarto', lifeArea: 'descanso', floorType: 'carpet' });
-  h = addRoom(h, { x: 22, y: 5, w: 4, h: 3 }, { nome: 'Banheiro', lifeArea: 'higiene', floorType: 'tile' });
-  h = addRoom(h, { x: 27, y: 15, w: 14, h: 8 }, { nome: 'Cozinha', lifeArea: 'alimentacao', floorType: 'brick' });
-  h = addRoom(h, { x: 6, y: 23, w: 17, h: 8 }, { nome: 'Cachorros — Grade', lifeArea: 'caes', floorType: 'grass' });
-  h = addRoom(h, { x: 23, y: 23, w: 18, h: 8 }, { nome: 'Cachorros — Jardim', lifeArea: 'caes', floorType: 'grass' });
-  h = addRoom(h, { x: 37, y: 23, w: 4, h: 3 }, { nome: 'Deck / Lavanderia', lifeArea: 'roupas', floorType: 'deck' });
 
-  // Alguns móveis de exemplo para a casa não nascer vazia.
-  h = addFurniture(h, 'tapete', 31, 8);
-  h = addFurniture(h, 'sofa', 32, 5);
-  h = addFurniture(h, 'estante', 38, 3);
-  h = addFurniture(h, 'cama', 16, 7);
-  h = addFurniture(h, 'armario', 23, 6);
+  h = addRoom(h, { x: 22, y: 4, w: 16, h: 12 }, { nome: 'Sala', lifeArea: 'conforto', floorType: 'parquet' });
+  h = addRoom(h, { x: 22, y: 15, w: 16, h: 8 }, { nome: 'Cozinha', lifeArea: 'alimentacao', floorType: 'brick' });
+  h = addRoom(h, { x: 6, y: 4, w: 17, h: 4 }, { nome: 'Corredor', lifeArea: 'circulacao', floorType: 'wood' });
+  h = addRoom(h, { x: 6, y: 7, w: 12, h: 9 }, { nome: 'Quarto', lifeArea: 'descanso', floorType: 'carpet' });
+  h = addRoom(h, { x: 17, y: 7, w: 6, h: 9 }, { nome: 'Escritório', lifeArea: 'trabalho', floorType: 'wood' });
+  h = addRoom(h, { x: 22, y: 22, w: 16, h: 8 }, { nome: 'Cachorros — Jardim', lifeArea: 'caes', floorType: 'grass' });
+  h = addRoom(h, { x: 6, y: 22, w: 17, h: 8 }, { nome: 'Cachorros — Grade', lifeArea: 'caes', floorType: 'grass' });
+
+  // Portas (em paredes compartilhadas) conectando os cômodos.
+  h = addWallItem(h, 'door', 22, 5); // Corredor ↔ Sala
+  h = addWallItem(h, 'door', 11, 7); // Corredor ↔ Quarto
+  h = addWallItem(h, 'door', 17, 10); // Quarto ↔ Escritório
+  h = addWallItem(h, 'door', 22, 11); // Escritório ↔ Sala
+  h = addWallItem(h, 'door', 29, 15); // Sala ↔ Cozinha
+  h = addWallItem(h, 'door', 29, 22); // Cozinha ↔ Jardim
+  h = addWallItem(h, 'door', 22, 25); // Jardim ↔ Grade
+
+  // Janelas nas paredes externas.
+  h = addWallItem(h, 'window', 28, 4);
+  h = addWallItem(h, 'window', 32, 4);
+  h = addWallItem(h, 'window', 37, 9);
+  h = addWallItem(h, 'window', 6, 10);
+
+  // Móveis de exemplo (no interior dos cômodos).
+  h = addFurniture(h, 'tapete', 25, 9);
+  h = addFurniture(h, 'sofa', 26, 6);
+  h = addFurniture(h, 'estante', 34, 5);
+  h = addFurniture(h, 'cama', 9, 10);
+  h = addFurniture(h, 'armario', 13, 9);
   return h;
 }

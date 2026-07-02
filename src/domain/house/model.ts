@@ -28,14 +28,31 @@ export interface FurnitureItem {
   y: number;
 }
 
+/** Item de parede: porta (abre passagem) ou janela (decorativa, continua sólida). */
+export type WallItemKind = 'door' | 'window';
+export interface WallItem {
+  id: string;
+  kind: WallItemKind;
+  x: number;
+  y: number;
+}
+
 export interface HouseModel {
   id: string;
   nome: string;
   larguraTiles: number;
   alturaTiles: number;
+  /**
+   * Cada cômodo é um retângulo cujo ANEL EXTERNO é parede e o INTERIOR é piso. Cômodos que
+   * compartilham uma coluna/linha de parede podem ser ligados por uma porta nela.
+   */
   rooms: BuiltRoom[];
   furniture: FurnitureItem[];
+  wallItems: WallItem[];
 }
+
+/** Menor dimensão de um cômodo (para sobrar ao menos 1 tile de interior). */
+export const ROOM_MIN = 3;
 
 /** Metadados para os seletores do construtor. */
 export const LIFE_AREAS: { id: LifeArea; label: string }[] = [
@@ -75,7 +92,7 @@ export const MIN_HOUSE_W = 64;
 export const MIN_HOUSE_H = 44;
 
 export function createEmptyHouse(nome = 'Nova casa', larguraTiles = MIN_HOUSE_W, alturaTiles = MIN_HOUSE_H): HouseModel {
-  return { id: crypto.randomUUID(), nome, larguraTiles, alturaTiles, rooms: [], furniture: [] };
+  return { id: crypto.randomUUID(), nome, larguraTiles, alturaTiles, rooms: [], furniture: [], wallItems: [] };
 }
 
 export interface NewRoomOptions {
@@ -144,6 +161,36 @@ export function furnitureAtTile(house: HouseModel, x: number, y: number): Furnit
     if (def && x >= f.x && x < f.x + def.w && y >= f.y && y < f.y + def.h) return f;
   }
   return null;
+}
+
+// --- Portas e janelas ---
+
+export function addWallItem(house: HouseModel, kind: WallItemKind, x: number, y: number): HouseModel {
+  // Um tile só pode ter um item; substitui se já houver.
+  const rest = house.wallItems.filter((w) => !(w.x === x && w.y === y));
+  return { ...house, wallItems: [...rest, { id: crypto.randomUUID(), kind, x, y }] };
+}
+
+export function removeWallItem(house: HouseModel, id: string): HouseModel {
+  return { ...house, wallItems: house.wallItems.filter((w) => w.id !== id) };
+}
+
+export function wallItemAtTile(house: HouseModel, x: number, y: number): WallItem | null {
+  return house.wallItems.find((w) => w.x === x && w.y === y) ?? null;
+}
+
+/** True se (x,y) é uma parede: está no anel externo de algum cômodo e não no interior de nenhum. */
+export function isWallTile(house: HouseModel, x: number, y: number): boolean {
+  let onBorder = false;
+  for (const room of house.rooms) {
+    const r = room.rect;
+    const inside = x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+    if (!inside) continue;
+    const interior = x > r.x && x < r.x + r.w - 1 && y > r.y && y < r.y + r.h - 1;
+    if (interior) return false; // interior vence
+    onBorder = true;
+  }
+  return onBorder;
 }
 
 /** Onde o personagem nasce: centro da Sala, senão do primeiro cômodo, senão do mapa. */

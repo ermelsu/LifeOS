@@ -130,6 +130,33 @@ export function createTileTextures(scene: Phaser.Scene): void {
     put(g, x, y, c);
   });
 
+  // --- Porta (folha de madeira) ---
+  makeTexture(scene, 'door', (g, x, y) => {
+    const border = x === 0 || y === 0 || x === TILE - 1 || y === TILE - 1;
+    const panelInset = x >= 5 && x <= TILE - 6 && (y >= 5 && y <= 14 || y >= 17 && y <= 26);
+    let c: number;
+    if (border) c = 0x3a2312;
+    else if (x >= 3 && x <= TILE - 4 && (y === 4 || y === 15 || y === 16 || y === 27)) c = 0x5a3418; // travessas
+    else if (panelInset) c = shade(0x8a5a2e, 1.05);
+    else c = 0x6e4420;
+    if (x >= TILE - 9 && x <= TILE - 7 && y >= 14 && y <= 16) c = 0xe0c070; // maçaneta
+    put(g, x, y, c);
+  });
+
+  // --- Janela (vidro com moldura) ---
+  makeTexture(scene, 'window', (g, x, y) => {
+    const frame = x <= 2 || y <= 2 || x >= TILE - 3 || y >= TILE - 3;
+    const bar = Math.abs(x - TILE / 2) <= 1 || Math.abs(y - TILE / 2) <= 1;
+    let c: number;
+    if (frame) c = 0x6e4420;
+    else if (bar) c = 0x5a3418;
+    else {
+      c = 0x9fd6ea; // vidro
+      if (x + y < 20) c = 0xd6f0f8; // reflexo
+    }
+    put(g, x, y, c);
+  });
+
   // --- Brilho quente radial (lareira / luminária) ---
   const glowKey = 'glow';
   if (!scene.textures.exists(glowKey)) {

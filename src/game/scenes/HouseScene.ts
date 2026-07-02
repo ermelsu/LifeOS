@@ -40,7 +40,7 @@ export class HouseScene extends Phaser.Scene {
 
   private hudText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
-  private house: HouseModel = { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [], furniture: [] };
+  private house: HouseModel = { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [], furniture: [], wallItems: [] };
 
   private readonly tile = 32;
 
@@ -77,7 +77,7 @@ export class HouseScene extends Phaser.Scene {
     this.ensureAnims();
     this.bakePackTiles();
     this.bakeFurnitureTextures();
-    this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [], furniture: [] };
+    this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [], furniture: [], wallItems: [] };
 
     const ts = this.tile;
     const worldW = this.house.larguraTiles * ts;
@@ -203,18 +203,31 @@ export class HouseScene extends Phaser.Scene {
     const ts = this.tile;
     const grid = buildGrid(this.house);
 
-    // Paredes VISÍVEIS: só os tiles de parede que encostam em algum piso — contorna cada
-    // cômodo/corredor e deixa aberto onde dois cômodos se encostam.
+    // Paredes VISÍVEIS: os tiles de parede que encostam em algum piso (contorna cada cômodo).
+    // Janelas aparecem no lugar da parede; paredes cujo tile de baixo é chão mostram a "face"
+    // (mais clara), as demais ficam mais escuras (topo/lateral) — dá profundidade.
     const isFloor = (x: number, y: number): boolean => (grid[y]?.[x] ?? 0) === FLOOR;
+    const windows = new Set(this.house.wallItems.filter((w) => w.kind === 'window').map((w) => `${w.x},${w.y}`));
     for (let y = 0; y < grid.length; y++) {
       const row = grid[y];
       if (!row) continue;
       for (let x = 0; x < row.length; x++) {
         if ((row[x] ?? 0) === FLOOR) continue;
-        if (isFloor(x - 1, y) || isFloor(x + 1, y) || isFloor(x, y - 1) || isFloor(x, y + 1)) {
-          this.add.image((x + 0.5) * ts, (y + 0.5) * ts, 'pk-wall').setDisplaySize(ts, ts).setDepth(3);
+        if (!(isFloor(x - 1, y) || isFloor(x + 1, y) || isFloor(x, y - 1) || isFloor(x, y + 1))) continue;
+        const cx = (x + 0.5) * ts;
+        const cy = (y + 0.5) * ts;
+        if (windows.has(`${x},${y}`)) {
+          this.add.image(cx, cy, 'window').setDisplaySize(ts, ts).setDepth(4);
+        } else {
+          const img = this.add.image(cx, cy, 'pk-wall').setDisplaySize(ts, ts).setDepth(3);
+          if (!isFloor(x, y + 1)) img.setTint(0x8f8f8f);
         }
       }
+    }
+
+    // Portas: sobre o vão (o tile já é chão na grade, então é passável).
+    for (const d of this.house.wallItems) {
+      if (d.kind === 'door') this.add.image(d.x * ts, d.y * ts, 'door').setOrigin(0, 0).setDisplaySize(ts, ts).setDepth(4);
     }
 
     const rects: Phaser.GameObjects.Rectangle[] = [];

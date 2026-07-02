@@ -13,6 +13,12 @@ import {
   addFurniture,
   moveFurniture,
   removeFurniture,
+  addWallItem,
+  removeWallItem,
+  wallItemAtTile,
+  isWallTile,
+  type WallItemKind,
+  ROOM_MIN,
 } from '@domain/house/model.ts';
 import { FURNITURE, FURNITURE_BY_KIND, INTERIORS_W, INTERIORS_H, type FurnitureDef } from '@domain/furniture/catalog.ts';
 
@@ -24,7 +30,9 @@ const HANDLE_CURSOR: Record<Handle, string> = {
   n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize',
 };
 
-type EditMode = 'rooms' | 'furniture';
+type EditMode = 'rooms' | 'furniture' | 'wallitems';
+
+const WALL_COLOR = '#6b5138';
 
 interface DragState {
   mode: 'draw' | 'move' | 'resize' | 'furniture';
@@ -55,7 +63,9 @@ export class HouseBuilder {
   private editMode: EditMode = 'rooms';
   private selectedId: string | null = null; // cômodo
   private selectedFurnitureId: string | null = null;
+  private selectedWallItemId: string | null = null;
   private brush: string | null = null; // móvel escolhido para colocar
+  private wallBrush: WallItemKind | null = null; // porta/janela escolhida
   private drag: DragState | null = null;
 
   constructor(store: LifeStore, parent: HTMLElement) {
@@ -123,6 +133,20 @@ export class HouseBuilder {
     const tile = this.tileFromEvent(e);
     this.svg.setPointerCapture(e.pointerId);
 
+    if (this.editMode === 'wallitems') {
+      const wid = (e.target as Element).getAttribute('data-wallitem');
+      if (wid) {
+        this.selectedWallItemId = wid;
+      } else if (this.wallBrush && isWallTile(house, tile.x, tile.y)) {
+        this.setHouse(addWallItem(house, this.wallBrush, tile.x, tile.y));
+        this.selectedWallItemId = wallItemAtTile(this.house() ?? house, tile.x, tile.y)?.id ?? null;
+      } else {
+        this.selectedWallItemId = null;
+      }
+      this.render();
+      return;
+    }
+
     if (this.editMode === 'furniture') {
       const fid = (e.target as Element).getAttribute('data-furniture');
       if (fid) {
@@ -178,7 +202,7 @@ export class HouseBuilder {
       const ny = Math.max(0, Math.min(house.alturaTiles - room.rect.h, tile.y - this.drag.offset.y));
       if (nx !== room.rect.x || ny !== room.rect.y) this.setHouse(updateRoom(house, room.id, { rect: { ...room.rect, x: nx, y: ny } }));
     } else if (this.drag.mode === 'resize' && this.drag.id && this.drag.handle && this.drag.orig) {
-      this.setHouse(updateRoom(house, this.drag.id, { rect: this.resizedRect(house, this.drag.orig, this.drag.handle, tile) }));
+      this.setHouse(updateRoom(house, this.drag.id, { rect: this.clampRoom(house, this.resizedRect(house, this.drag.orig, this.drag.handle, tile)) }));
     } else if (this.drag.mode === 'draw') {
       this.render();
     }
@@ -198,8 +222,8 @@ export class HouseBuilder {
     this.svg.releasePointerCapture(e.pointerId);
     if (this.drag.mode === 'draw') {
       const before = this.house();
-      const rect = this.rectFromTiles(this.drag.startTile, this.drag.curTile);
-      if (before && rect.w >= 1 && rect.h >= 1) {
+      if (before) {
+        const rect = this.clampRoom(before, this.rectFromTiles(this.drag.startTile, this.drag.curTile));
         this.setHouse(addRoom(before, rect));
         this.selectedId = this.house()?.rooms.at(-1)?.id ?? null;
       }
@@ -210,6 +234,15 @@ export class HouseBuilder {
 
   private rectFromTiles(a: Tile, b: Tile): TileRect {
     return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x) + 1, h: Math.abs(a.y - b.y) + 1 };
+  }
+
+  /** Garante tamanho mínimo (ROOM_MIN) e que o cômodo caiba no grid. */
+  private clampRoom(house: HouseModel, r: TileRect): TileRect {
+    const w = Math.min(house.larguraTiles, Math.max(ROOM_MIN, r.w));
+    const h = Math.min(house.alturaTiles, Math.max(ROOM_MIN, r.h));
+    const x = Math.max(0, Math.min(house.larguraTiles - w, r.x));
+    const y = Math.max(0, Math.min(house.alturaTiles - h, r.y));
+    return { x, y, w, h };
   }
 
   // --- Render ---
@@ -239,14 +272,17 @@ export class HouseBuilder {
 
     const parts: string[] = [];
 
-    // Cômodos (piso + nome).
+    // Cômodos: anel externo = parede; interior = piso.
     for (const room of house.rooms) {
       const r = room.rect;
       const selected = this.editMode === 'rooms' && room.id === this.selectedId;
       parts.push(
+        // parede (retângulo cheio)
         `<rect x="${r.x * px}" y="${r.y * px}" width="${r.w * px}" height="${r.h * px}" ` +
-          `fill="${FLOOR_HEX[room.floorType]}" fill-opacity="0.9" ` +
-          `stroke="${selected ? '#ffd27f' : '#00000066'}" stroke-width="${selected ? 2.5 : 1}" />`,
+          `fill="${WALL_COLOR}" stroke="${selected ? '#ffd27f' : '#00000066'}" stroke-width="${selected ? 2.5 : 1}" />`,
+        // interior (piso), inset de 1 tile
+        `<rect x="${(r.x + 1) * px}" y="${(r.y + 1) * px}" width="${(r.w - 2) * px}" height="${(r.h - 2) * px}" ` +
+          `fill="${FLOOR_HEX[room.floorType]}" fill-opacity="0.95" style="pointer-events:none" />`,
         `<text x="${(r.x + r.w / 2) * px}" y="${(r.y + r.h / 2) * px}" fill="#fff4e0" font-size="12" ` +
           `font-family="monospace" text-anchor="middle" dominant-baseline="middle" style="pointer-events:none">${escapeHtml(room.nome)}</text>`,
       );
@@ -263,6 +299,22 @@ export class HouseBuilder {
         parts.push(
           `<rect data-furniture="${f.id}" x="${f.x * px}" y="${f.y * px}" width="${def.w * px}" height="${def.h * px}" ` +
             `fill="#00000001" stroke="${sel ? '#7fd0ff' : 'none'}" stroke-width="2" style="cursor:move" />`,
+        );
+      }
+    }
+
+    // Portas e janelas.
+    for (const w of house.wallItems) {
+      const cor = w.kind === 'door' ? '#8a5a2e' : '#9fd6ea';
+      parts.push(
+        `<rect x="${w.x * px + 2}" y="${w.y * px + 2}" width="${px - 4}" height="${px - 4}" rx="2" ` +
+          `fill="${cor}" stroke="#000000aa" stroke-width="1" style="pointer-events:none" />`,
+      );
+      if (this.editMode === 'wallitems') {
+        const sel = w.id === this.selectedWallItemId;
+        parts.push(
+          `<rect data-wallitem="${w.id}" x="${w.x * px}" y="${w.y * px}" width="${px}" height="${px}" ` +
+            `fill="#00000001" stroke="${sel ? '#7fd0ff' : 'none'}" stroke-width="2" style="cursor:pointer" />`,
         );
       }
     }
@@ -303,15 +355,20 @@ export class HouseBuilder {
       <div class="mode-tabs">
         <button data-mode="rooms" class="${this.editMode === 'rooms' ? 'active' : ''}">Cômodos</button>
         <button data-mode="furniture" class="${this.editMode === 'furniture' ? 'active' : ''}">Móveis</button>
+        <button data-mode="wallitems" class="${this.editMode === 'wallitems' ? 'active' : ''}">Portas/Janelas</button>
       </div>
       <div class="field"><label>Zoom</label>
         <div class="zoom-row"><button id="b-zoomout">－</button><span class="dim">${this.px}px</span><button id="b-zoomin">＋</button></div>
       </div><hr />`;
 
+    const body =
+      this.editMode === 'rooms' ? this.roomsPanel(house)
+      : this.editMode === 'furniture' ? this.furniturePanel(house)
+      : this.wallItemsPanel(house);
+
     this.panel.innerHTML =
-      `<h2>🔨 Construir casa</h2>${tabs}` +
-      (this.editMode === 'rooms' ? this.roomsPanel(house) : this.furniturePanel(house)) +
-      `<hr /><div class="dim">🏠 ${escapeHtml(house.nome)} · ${house.rooms.length} cômodo(s) · ${house.furniture.length} móvel(is) · grid ${house.larguraTiles}×${house.alturaTiles}</div>`;
+      `<h2>🔨 Construir casa</h2>${tabs}${body}` +
+      `<hr /><div class="dim">🏠 ${escapeHtml(house.nome)} · ${house.rooms.length} cômodo(s) · ${house.furniture.length} móvel(is) · ${house.wallItems.length} porta(s)/janela(s) · grid ${house.larguraTiles}×${house.alturaTiles}</div>`;
 
     this.bindPanel(house);
   }
@@ -350,6 +407,18 @@ export class HouseBuilder {
       <p class="hint">Escolha um móvel e clique no cômodo para colocar. Clique num móvel para selecionar; arraste para mover.</p>
       <div class="furn-palette">${palette}</div>
       ${sel && selDef ? `<hr /><div class="dim">Selecionado: ${escapeHtml(selDef.label)}</div><button id="f-del" class="danger">Excluir móvel</button>` : ''}`;
+  }
+
+  private wallItemsPanel(house: HouseModel): string {
+    const sel = house.wallItems.find((w) => w.id === this.selectedWallItemId);
+    const btn = (kind: WallItemKind, label: string, cor: string): string =>
+      `<button class="furn-btn${this.wallBrush === kind ? ' active' : ''}" data-wallbrush="${kind}">` +
+      `<span style="display:inline-block;width:30px;height:20px;border-radius:3px;background:${cor}"></span><span>${label}</span></button>`;
+    return `
+      <p class="hint">Escolha e clique numa <b>parede</b> para colocar. A <b>porta</b> conecta cômodos que
+        compartilham parede; a <b>janela</b> é decorativa. Clique num item para selecionar.</p>
+      <div class="furn-palette">${btn('door', 'Porta', '#8a5a2e')}${btn('window', 'Janela', '#9fd6ea')}</div>
+      ${sel ? `<hr /><div class="dim">Selecionado: ${sel.kind === 'door' ? 'Porta' : 'Janela'}</div><button id="w-del" class="danger">Excluir</button>` : ''}`;
   }
 
   private bindPanel(house: HouseModel): void {
@@ -397,6 +466,22 @@ export class HouseBuilder {
       if (!id) return;
       withHouse((h) => removeFurniture(h, id));
       this.selectedFurnitureId = null;
+      this.render();
+    });
+
+    // Portas/Janelas
+    this.panel.querySelectorAll<HTMLButtonElement>('[data-wallbrush]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const k = b.dataset.wallbrush as WallItemKind;
+        this.wallBrush = this.wallBrush === k ? null : k;
+        this.render();
+      }),
+    );
+    this.panel.querySelector('#w-del')?.addEventListener('click', () => {
+      const id = this.selectedWallItemId;
+      if (!id) return;
+      withHouse((h) => removeWallItem(h, id));
+      this.selectedWallItemId = null;
       this.render();
     });
   }
