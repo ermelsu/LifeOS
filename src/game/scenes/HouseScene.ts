@@ -210,7 +210,12 @@ export class HouseScene extends Phaser.Scene {
       if (!row) continue;
       for (let x = 0; x < row.length; x++) {
         if ((row[x] ?? 0) === FLOOR) continue;
-        if (!(isFloor(x - 1, y) || isFloor(x + 1, y) || isFloor(x, y - 1) || isFloor(x, y + 1))) continue;
+        // Vizinhança de 8 (inclui diagonais) — assim os TILES DE CANTO, que só tocam o chão
+        // na diagonal, também são desenhados; sem isso as quinas ficam vazias.
+        const touchesFloor =
+          isFloor(x - 1, y) || isFloor(x + 1, y) || isFloor(x, y - 1) || isFloor(x, y + 1) ||
+          isFloor(x - 1, y - 1) || isFloor(x + 1, y - 1) || isFloor(x - 1, y + 1) || isFloor(x + 1, y + 1);
+        if (!touchesFloor) continue;
         const cx = (x + 0.5) * ts;
         const cy = (y + 0.5) * ts;
         if (windows.has(`${x},${y}`)) {
