@@ -103,8 +103,9 @@ export class HouseScene extends Phaser.Scene {
     this.buildFurniture();
 
     const spawn = spawnTile(this.house);
-    const char = this.store.getState().character?.sprite ?? 'adam';
-    this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts, char);
+    const character = this.store.getState().character;
+    const char = character?.sprite ?? 'adam';
+    this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts, char, character?.nome ?? '');
     this.physics.add.collider(this.player.collider, this.wallRects);
     this.physics.add.collider(this.player.collider, this.furnitureRects);
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
@@ -186,13 +187,14 @@ export class HouseScene extends Phaser.Scene {
         floor.tileScaleY = 2;
       }
       floor.setDepth(0);
+      // Rótulo no interior (não em cima da parede), discreto.
       this.add
-        .text((r.x + r.w / 2) * ts, r.y * ts + 12, room.nome, {
-          fontFamily: 'monospace', fontSize: '13px', color: '#fff4e0', stroke: '#000000', strokeThickness: 3,
+        .text((r.x + r.w / 2) * ts, (r.y + 1) * ts + 3, room.nome, {
+          fontFamily: 'monospace', fontSize: '12px', color: '#fff4e0', stroke: '#000000', strokeThickness: 3,
         })
         .setOrigin(0.5, 0)
-        .setDepth(4)
-        .setAlpha(0.85);
+        .setDepth(5)
+        .setAlpha(0.65);
     }
   }
 
