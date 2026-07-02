@@ -46,8 +46,16 @@ export class HouseScene extends Phaser.Scene {
     this.store = store;
   }
 
+  preload(): void {
+    const base = import.meta.env.BASE_URL;
+    const chars = `${base}assets/moderninteriors/characters`;
+    this.load.spritesheet('adam-idle', `${chars}/adam_idle.png`, { frameWidth: 16, frameHeight: 32 });
+    this.load.spritesheet('adam-walk', `${chars}/adam_run.png`, { frameWidth: 16, frameHeight: 32 });
+  }
+
   create(): void {
     createTileTextures(this);
+    this.ensureAnims();
     this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [] };
 
     const ts = this.tile;
@@ -75,9 +83,9 @@ export class HouseScene extends Phaser.Scene {
     this.buildWalls();
 
     const spawn = spawnTile(this.house);
-    this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts, ts * 0.7);
-    this.physics.add.collider(this.player.gameObject, this.wallRects);
-    this.cameras.main.startFollow(this.player.gameObject, true, 0.1, 0.1);
+    this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts);
+    this.physics.add.collider(this.player.collider, this.wallRects);
+    this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
     this.buildGlows();
 
@@ -85,6 +93,33 @@ export class HouseScene extends Phaser.Scene {
 
     this.buildInput();
     this.applyPhase();
+  }
+
+  /**
+   * Cria as animações do personagem (globais ao jogo; criadas uma vez). Layout decodificado
+   * das folhas 16×32 do Modern Interiors: 6 frames por direção, na ordem
+   * esquerda(0–5) · cima(6–11) · direita(12–17) · baixo(18–23).
+   */
+  private ensureAnims(): void {
+    const dirs: [string, number][] = [['left', 0], ['up', 6], ['right', 12], ['down', 18]];
+    for (const [dir, start] of dirs) {
+      if (!this.anims.exists(`walk-${dir}`)) {
+        this.anims.create({
+          key: `walk-${dir}`,
+          frames: this.anims.generateFrameNumbers('adam-walk', { start, end: start + 5 }),
+          frameRate: 10,
+          repeat: -1,
+        });
+      }
+      if (!this.anims.exists(`idle-${dir}`)) {
+        this.anims.create({
+          key: `idle-${dir}`,
+          frames: this.anims.generateFrameNumbers('adam-idle', { start, end: start + 5 }),
+          frameRate: 5,
+          repeat: -1,
+        });
+      }
+    }
   }
 
   private buildFloors(): void {
