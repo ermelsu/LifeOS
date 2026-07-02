@@ -59,6 +59,17 @@ npm run typecheck  # apenas checagem de tipos
 O deploy no GitHub Pages é automático via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
 a cada push na `main`. Ative **Pages → Source: GitHub Actions** nas configurações do repositório.
 
+## Instalar como app (PWA)
+
+O LifeOS é um **PWA**: roda no navegador do **iPad, celular e PC** e pode ser **instalado**
+(ícone na tela, tela cheia, offline). Abra https://ermelsu.github.io/LifeOS/ e:
+
+- **iPhone/iPad (Safari):** Compartilhar → **Adicionar à Tela de Início**.
+- **Android (Chrome):** menu ⋮ → **Instalar app / Adicionar à tela inicial**.
+- **PC (Chrome/Edge):** ícone de **instalar** na barra de endereço.
+
+Atualiza sozinho quando uma nova versão é publicada (Workbox `autoUpdate`).
+
 ## Estado atual — Módulo 0 (Fundação técnica) ✅
 
 Conforme o plano modular (seção 11 do documento-mestre):
