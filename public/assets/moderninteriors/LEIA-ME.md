@@ -1,12 +1,18 @@
-# Assets — Modern Interiors (LimeZu)
+# Assets — Modern Interiors (LimeZu), versão FREE v2.2
 
-Coloque aqui os **PNG** extraídos do pack **Modern Interiors** (LimeZu) — **não** o `.zip`/`.rar`.
-Mantenha os nomes/estrutura originais do pack (ex.: a spritesheet de interiores e a(s) de
-personagem). O Vite serve esta pasta em `/<base>/assets/moderninteriors/...`.
+Arte pixel usada no LifeOS. Fonte: https://limezu.itch.io/moderninteriors
 
-- Fonte: https://limezu.itch.io/moderninteriors
-- Estamos usando a **versão gratuita** para uso pessoal (não comercial). Se o projeto virar algo
-  público/comercial, comprar a versão paga (barata) resolve a licença.
-- Crédito ao autor em `CREDITS.md` (exigido pela licença).
+## Licença (ver `LICENSE.txt`)
+**Versão gratuita → uso NÃO COMERCIAL.** Pode usar/editar em projeto pessoal; não pode usar em
+projeto comercial nem revender. Crédito ao LimeZu em `CREDITS.md`. Se o LifeOS virar algo público/
+comercial, comprar a versão paga (barata) libera o uso comercial.
 
-> Não redistribuir estes arquivos como "pacote de assets".
+## Estrutura (só o 16×16 nativo; as versões 32/48 e as pastas antigas foram descartadas)
+- `tiles/room_builder.png` — pisos, paredes, janelas, portas (para montar os cômodos). 272×368.
+- `tiles/interiors.png` — móveis e objetos (sofá, cama, cozinha, estantes, plantas…). 256×1424.
+- `characters/<nome>.png` — folha completa do personagem (andar/correr/parado/sentar, 4 direções).
+  Frame de **16×32**. Personagens: adam, alex, amelia, bob.
+- `characters/<nome>_idle.png` e `_run.png` — animações isoladas (idle/corrida), frame 16×32.
+- `overview.png` — visão geral de tudo que o pack contém (referência).
+
+Servido pelo Vite em `/<base>/assets/moderninteriors/...`. **Não redistribuir como pacote de assets.**
