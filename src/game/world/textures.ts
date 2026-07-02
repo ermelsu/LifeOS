@@ -118,15 +118,17 @@ export function createTileTextures(scene: Phaser.Scene): void {
     put(g, x, y, c);
   });
 
-  // --- Parede de madeira com trilho alaranjado no topo (como a referência) ---
+  // --- Parede ISOTRÓPICA (tijolos de madeira): tila igual em qualquer direção e emenda nas
+  //     quinas sozinha. As fiadas são deslocadas (padrão de tijolo). ---
   makeTexture(scene, 'wall', (g, x, y) => {
     const r = rng(x * 13 + y * 31);
+    const course = Math.floor(y / 8);
+    const offset = (course % 2) * 8; // desloca fiadas alternadas
+    const mortar = y % 8 === 0 || (x + offset) % 16 === 0;
     let c: number;
-    if (y <= 1) c = 0x2a1c12; // sombra superior
-    else if (y <= 6) c = shade(0xc07a2e, 0.9 + r() * 0.15); // trilho/topo alaranjado
-    else if (y === 7) c = 0x7a4a20; // linha de destaque
-    else c = shade(0x4a3323, 0.86 + r() * 0.16); // corpo da parede
-    if (x === 0 || x === TILE - 1) c = shade(c, 0.8);
+    if (mortar) c = 0x33241a; // junta escura
+    else if (y % 8 === 1) c = shade(0x6e4d30, 1.02); // brilho sob a junta
+    else c = shade(0x5f4229, 0.9 + r() * 0.16); // corpo do tijolo
     put(g, x, y, c);
   });
 

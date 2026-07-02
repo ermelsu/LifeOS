@@ -59,8 +59,6 @@ export class HouseScene extends Phaser.Scene {
     tile: { key: 'pk-tile', frame: 182 },
     deck: { key: 'pk-deck', frame: 216 },
   };
-  private static readonly WALL_FRAME = 239;
-
   preload(): void {
     const base = import.meta.env.BASE_URL;
     const mi = `${base}assets/moderninteriors`;
@@ -166,7 +164,6 @@ export class HouseScene extends Phaser.Scene {
 
   private bakePackTiles(): void {
     for (const v of Object.values(HouseScene.PACK_FLOOR)) if (v) this.makeTile(v.key, v.frame);
-    this.makeTile('pk-wall', HouseScene.WALL_FRAME);
   }
 
   private bakeFurnitureTextures(): void {
@@ -219,8 +216,10 @@ export class HouseScene extends Phaser.Scene {
         if (windows.has(`${x},${y}`)) {
           this.add.image(cx, cy, 'window').setDisplaySize(ts, ts).setDepth(4);
         } else {
-          const img = this.add.image(cx, cy, 'pk-wall').setDisplaySize(ts, ts).setDepth(3);
-          if (!isFloor(x, y + 1)) img.setTint(0x8f8f8f);
+          // Parede isotrópica (emenda nas quinas). Tiles com chão logo abaixo mostram a
+          // "face" (mais clara); os demais ficam levemente mais escuros (topo), dando relevo.
+          const img = this.add.image(cx, cy, 'wall').setDisplaySize(ts, ts).setDepth(3);
+          if (!isFloor(x, y + 1)) img.setTint(0xb8b8b8);
         }
       }
     }
