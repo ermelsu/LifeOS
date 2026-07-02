@@ -45,9 +45,14 @@ interface LegacyV2 {
  *  - v1: sem casa alguma;
  *  - v2: uma única `house` → vira `houses:[house]` com essa casa ativa.
  */
-/** Garante o grid mínimo (só cresce; nunca encolhe abaixo dos cômodos existentes). */
+/** Garante o grid mínimo e o array de móveis (migração leve; só cresce/preenche). */
 function ensureMinGrid(h: HouseModel): HouseModel {
-  return { ...h, larguraTiles: Math.max(h.larguraTiles, MIN_HOUSE_W), alturaTiles: Math.max(h.alturaTiles, MIN_HOUSE_H) };
+  return {
+    ...h,
+    larguraTiles: Math.max(h.larguraTiles, MIN_HOUSE_W),
+    alturaTiles: Math.max(h.alturaTiles, MIN_HOUSE_H),
+    furniture: Array.isArray(h.furniture) ? h.furniture : [],
+  };
 }
 
 export function normalizeLifeState(state: LifeState): LifeState {

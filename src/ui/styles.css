@@ -408,6 +408,54 @@ body {
   padding: 4px;
 }
 
+.builder-side .mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.builder-side .mode-tabs button {
+  flex: 1;
+  margin: 0;
+}
+
+.builder-side .mode-tabs button.active {
+  background: var(--accent);
+  color: #1a1206;
+  border-color: var(--accent);
+}
+
+.furn-palette {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.furn-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin: 0 !important;
+  padding: 6px 2px !important;
+  min-height: 64px;
+  justify-content: flex-end;
+}
+
+.furn-btn span {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.furn-btn.active {
+  border-color: var(--accent) !important;
+  background: #2b2f3a !important;
+}
+
+.furn-btn svg {
+  image-rendering: pixelated;
+}
+
 /* Indicador discreto de salvamento (canto inferior direito). */
 .save-indicator {
   position: absolute;

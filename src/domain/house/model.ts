@@ -1,4 +1,5 @@
 import { type LifeArea, type FloorType, type Tile, type TileRect, rectContains } from './types.ts';
+import { FURNITURE_BY_KIND } from '@domain/furniture/catalog.ts';
 
 /**
  * Modelo EDITÁVEL da casa — o que o construtor cria e o jogo lê. Faz parte do LifeState e é
@@ -19,12 +20,21 @@ export interface BuiltRoom {
   rect: TileRect;
 }
 
+/** Móvel posicionado: referencia o catálogo por `kind`; (x,y) é o canto superior esquerdo. */
+export interface FurnitureItem {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+}
+
 export interface HouseModel {
   id: string;
   nome: string;
   larguraTiles: number;
   alturaTiles: number;
   rooms: BuiltRoom[];
+  furniture: FurnitureItem[];
 }
 
 /** Metadados para os seletores do construtor. */
@@ -65,7 +75,7 @@ export const MIN_HOUSE_W = 64;
 export const MIN_HOUSE_H = 44;
 
 export function createEmptyHouse(nome = 'Nova casa', larguraTiles = MIN_HOUSE_W, alturaTiles = MIN_HOUSE_H): HouseModel {
-  return { id: crypto.randomUUID(), nome, larguraTiles, alturaTiles, rooms: [] };
+  return { id: crypto.randomUUID(), nome, larguraTiles, alturaTiles, rooms: [], furniture: [] };
 }
 
 export interface NewRoomOptions {
@@ -108,6 +118,32 @@ export function roomAtTile(house: HouseModel, x: number, y: number): BuiltRoom |
 /** Centro (em tiles) de um retângulo. */
 export function rectCenter(rect: TileRect): Tile {
   return { x: rect.x + Math.floor(rect.w / 2), y: rect.y + Math.floor(rect.h / 2) };
+}
+
+// --- Móveis ---
+
+export function addFurniture(house: HouseModel, kind: string, x: number, y: number): HouseModel {
+  const item: FurnitureItem = { id: crypto.randomUUID(), kind, x, y };
+  return { ...house, furniture: [...house.furniture, item] };
+}
+
+export function moveFurniture(house: HouseModel, id: string, x: number, y: number): HouseModel {
+  return { ...house, furniture: house.furniture.map((f) => (f.id === id ? { ...f, x, y } : f)) };
+}
+
+export function removeFurniture(house: HouseModel, id: string): HouseModel {
+  return { ...house, furniture: house.furniture.filter((f) => f.id !== id) };
+}
+
+/** Móvel cujo footprint cobre o tile (o de cima, desenhado por último, vence). */
+export function furnitureAtTile(house: HouseModel, x: number, y: number): FurnitureItem | null {
+  for (let i = house.furniture.length - 1; i >= 0; i--) {
+    const f = house.furniture[i];
+    if (!f) continue;
+    const def = FURNITURE_BY_KIND[f.kind];
+    if (def && x >= f.x && x < f.x + def.w && y >= f.y && y < f.y + def.h) return f;
+  }
+  return null;
 }
 
 /** Onde o personagem nasce: centro da Sala, senão do primeiro cômodo, senão do mapa. */

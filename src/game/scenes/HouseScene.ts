@@ -4,6 +4,7 @@ import { type LifeStore } from '@domain/state/LifeStore.ts';
 import { getActiveHouse } from '@domain/state/lifeOps.ts';
 import { type FloorType } from '@domain/house/types.ts';
 import { type HouseModel, roomAtTile, spawnTile } from '@domain/house/model.ts';
+import { FURNITURE, FURNITURE_BY_KIND, ART_TILE } from '@domain/furniture/catalog.ts';
 import { buildGrid, mergeWalls, FLOOR } from '@game/world/buildGrid.ts';
 import { createTileTextures, floorKey } from '@game/world/textures.ts';
 import { Player } from '@game/entities/Player.ts';
@@ -37,7 +38,7 @@ export class HouseScene extends Phaser.Scene {
 
   private hudText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
-  private house: HouseModel = { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [] };
+  private house: HouseModel = { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [], furniture: [] };
 
   private readonly tile = 32;
 
@@ -64,13 +65,15 @@ export class HouseScene extends Phaser.Scene {
     this.load.spritesheet('adam-idle', `${mi}/characters/adam_idle.png`, { frameWidth: 16, frameHeight: 32 });
     this.load.spritesheet('adam-walk', `${mi}/characters/adam_run.png`, { frameWidth: 16, frameHeight: 32 });
     this.load.spritesheet('rooms', `${mi}/tiles/room_builder.png`, { frameWidth: 16, frameHeight: 16 });
+    this.load.image('interiors', `${mi}/tiles/interiors.png`);
   }
 
   create(): void {
     createTileTextures(this);
     this.ensureAnims();
     this.bakePackTiles();
-    this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [] };
+    this.bakeFurnitureTextures();
+    this.house = getActiveHouse(this.store.getState()) ?? { id: '', nome: '', larguraTiles: 48, alturaTiles: 34, rooms: [], furniture: [] };
 
     const ts = this.tile;
     const worldW = this.house.larguraTiles * ts;
@@ -95,6 +98,7 @@ export class HouseScene extends Phaser.Scene {
 
     this.buildFloors();
     this.buildWalls();
+    this.buildFurniture();
 
     const spawn = spawnTile(this.house);
     this.player = new Player(this, (spawn.x + 0.5) * ts, (spawn.y + 0.5) * ts);
@@ -136,23 +140,31 @@ export class HouseScene extends Phaser.Scene {
     }
   }
 
-  /** Extrai um tile 16×16 do room_builder numa textura própria (evita bleed do TileSprite). */
-  private makeTile(key: string, srcKey: string, frameIndex: number): void {
+  /** Recorta uma região arbitrária de uma textura de origem numa textura própria. */
+  private makeRegion(key: string, srcKey: string, sx: number, sy: number, sw: number, sh: number): void {
     if (this.textures.exists(key)) return;
-    const size = 16;
-    const cols = 17;
-    const canvas = this.textures.createCanvas(key, size, size);
+    const canvas = this.textures.createCanvas(key, sw, sh);
     if (!canvas) return;
     const src = this.textures.get(srcKey).getSourceImage() as CanvasImageSource;
-    const sx = (frameIndex % cols) * size;
-    const sy = Math.floor(frameIndex / cols) * size;
-    canvas.context.drawImage(src, sx, sy, size, size, 0, 0, size, size);
+    canvas.context.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
     canvas.refresh();
   }
 
+  /** Extrai um tile 16×16 do room_builder (evita bleed do TileSprite ao tilear um frame). */
+  private makeTile(key: string, frameIndex: number): void {
+    const cols = 17;
+    this.makeRegion(key, 'rooms', (frameIndex % cols) * 16, Math.floor(frameIndex / cols) * 16, 16, 16);
+  }
+
   private bakePackTiles(): void {
-    for (const v of Object.values(HouseScene.PACK_FLOOR)) if (v) this.makeTile(v.key, 'rooms', v.frame);
-    this.makeTile('pk-wall', 'rooms', HouseScene.WALL_FRAME);
+    for (const v of Object.values(HouseScene.PACK_FLOOR)) if (v) this.makeTile(v.key, v.frame);
+    this.makeTile('pk-wall', HouseScene.WALL_FRAME);
+  }
+
+  private bakeFurnitureTextures(): void {
+    for (const def of FURNITURE) {
+      this.makeRegion(`fn-${def.kind}`, 'interiors', def.col * ART_TILE, def.row * ART_TILE, def.w * ART_TILE, def.h * ART_TILE);
+    }
   }
 
   private buildFloors(): void {
@@ -204,6 +216,19 @@ export class HouseScene extends Phaser.Scene {
       rects.push(r);
     }
     this.wallRects = rects;
+  }
+
+  private buildFurniture(): void {
+    const ts = this.tile;
+    for (const item of this.house.furniture) {
+      const def = FURNITURE_BY_KIND[item.kind];
+      if (!def) continue;
+      this.add
+        .image(item.x * ts, item.y * ts, `fn-${item.kind}`)
+        .setOrigin(0, 0)
+        .setDisplaySize(def.w * ts, def.h * ts)
+        .setDepth(def.flat ? 1 : 6);
+    }
   }
 
   private buildGlows(): void {

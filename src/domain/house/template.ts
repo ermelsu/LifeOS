@@ -1,4 +1,4 @@
-import { type HouseModel, addRoom, createEmptyHouse } from './model.ts';
+import { type HouseModel, addRoom, addFurniture, createEmptyHouse } from './model.ts';
 
 /**
  * Casa de EXEMPLO com que o LifeOS começa — fiel às adjacências reais documentadas em
@@ -21,5 +21,12 @@ export function templateHouse(): HouseModel {
   h = addRoom(h, { x: 6, y: 23, w: 17, h: 8 }, { nome: 'Cachorros — Grade', lifeArea: 'caes', floorType: 'grass' });
   h = addRoom(h, { x: 23, y: 23, w: 18, h: 8 }, { nome: 'Cachorros — Jardim', lifeArea: 'caes', floorType: 'grass' });
   h = addRoom(h, { x: 37, y: 23, w: 4, h: 3 }, { nome: 'Deck / Lavanderia', lifeArea: 'roupas', floorType: 'deck' });
+
+  // Alguns móveis de exemplo para a casa não nascer vazia.
+  h = addFurniture(h, 'tapete', 31, 8);
+  h = addFurniture(h, 'sofa', 32, 5);
+  h = addFurniture(h, 'estante', 38, 3);
+  h = addFurniture(h, 'cama', 16, 7);
+  h = addFurniture(h, 'armario', 23, 6);
   return h;
 }

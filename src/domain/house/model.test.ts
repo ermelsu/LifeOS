@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { addRoom, updateRoom, removeRoom, roomAtTile, spawnTile, createEmptyHouse } from './model.ts';
+import {
+  addRoom, updateRoom, removeRoom, roomAtTile, spawnTile, createEmptyHouse,
+  addFurniture, moveFurniture, removeFurniture, furnitureAtTile,
+} from './model.ts';
 import { templateHouse } from './template.ts';
 
 describe('HouseModel — operações', () => {
@@ -25,6 +28,18 @@ describe('HouseModel — operações', () => {
     expect(roomAtTile(h, 1, 1)?.nome).toBe('Sub');
     expect(roomAtTile(h, 4, 4)?.nome).toBe('Base');
     expect(roomAtTile(h, 9, 9)).toBeNull();
+  });
+});
+
+describe('móveis', () => {
+  it('adiciona, move, detecta pelo footprint e remove', () => {
+    let h = addFurniture(createEmptyHouse(), 'sofa', 5, 5); // sofá 3×2
+    const id = h.furniture[0]!.id;
+    expect(furnitureAtTile(h, 7, 6)?.id).toBe(id); // dentro do 3×2
+    expect(furnitureAtTile(h, 9, 5)).toBeNull(); // fora
+    h = moveFurniture(h, id, 10, 10);
+    expect(furnitureAtTile(h, 11, 11)?.id).toBe(id);
+    expect(removeFurniture(h, id).furniture).toHaveLength(0);
   });
 });
 

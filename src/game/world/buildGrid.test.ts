@@ -20,7 +20,7 @@ describe('buildGrid', () => {
   });
 
   it('mergeWalls cobre a linha inteira quando não há cômodos nela', () => {
-    const rects = mergeWalls(buildGrid({ id: 't', nome: 'T', larguraTiles: 6, alturaTiles: 2, rooms: [] }));
+    const rects = mergeWalls(buildGrid({ id: 't', nome: 'T', larguraTiles: 6, alturaTiles: 2, rooms: [], furniture: [] }));
     expect(rects).toContainEqual({ x: 0, y: 0, w: 6, h: 1 });
   });
 });
