@@ -187,14 +187,6 @@ export class HouseScene extends Phaser.Scene {
         floor.tileScaleY = 2;
       }
       floor.setDepth(0);
-      // Rótulo no interior (não em cima da parede), discreto.
-      this.add
-        .text((r.x + r.w / 2) * ts, (r.y + 1) * ts + 3, room.nome, {
-          fontFamily: 'monospace', fontSize: '12px', color: '#fff4e0', stroke: '#000000', strokeThickness: 3,
-        })
-        .setOrigin(0.5, 0)
-        .setDepth(5)
-        .setAlpha(0.65);
     }
   }
 
@@ -223,10 +215,8 @@ export class HouseScene extends Phaser.Scene {
         if (windows.has(`${x},${y}`)) {
           this.add.image(cx, cy, 'window').setDisplaySize(ts, ts).setDepth(4);
         } else {
-          // Parede isotrópica (emenda nas quinas). Tiles com chão logo abaixo mostram a
-          // "face" (mais clara); os demais ficam levemente mais escuros (topo), dando relevo.
-          const img = this.add.image(cx, cy, 'wall').setDisplaySize(ts, ts).setDepth(3);
-          if (!isFloor(x, y + 1)) img.setTint(0xb8b8b8);
+          // Parede uniforme (mesmo tom em todos os lados) — emenda nas quinas.
+          this.add.image(cx, cy, 'wall').setDisplaySize(ts, ts).setDepth(3);
         }
       }
     }
